@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.7 (2026-11-15)
+Versão: 0.8 (2026-11-15)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -18,7 +18,7 @@ Repositório: github.com/renahangil/pixelpulse
 | 1 | Coletor de métricas (Rust) | concluída |
 | 2 | Cache e ponte com a UI | concluída |
 | 3 | Janela estilo ilha | concluída |
-| 4 | Visual pixel art com glass discreto | pendente |
+| 4 | Visual pixel art com glass discreto | concluída |
 | 5 | Medição e otimização | pendente |
 | 6 | IA local (Claude Code, Codex) | pendente |
 | 7 | Acabamento (bandeja, autostart, config) | pendente |
@@ -147,10 +147,47 @@ permanece dentro, o hover continua mantendo a janela aberta após liberar a fixa
 Nenhuma dependência do aplicativo foi adicionada ou alterada.
 A versão do aplicativo permanece 0.1.0; 0.7 é a versão deste plano.
 
+## Fase 4 — critérios de aceite e validação
+
+- [x] API oficial de window-vibrancy 0.8.1 conferida; acrylic com tinta (20,20,26,72) e fallback rgba(20,20,26,0.6) sem blur.
+- [x] Cantos CSS de 4 px e recorte do conteúdo; geometria nativa da Fase 3 preservada.
+- [x] tokens.css com grade --px:3px, textos solicitados e três tons discretos de CPU/RAM/GPU/SSD/IA.
+- [x] Quatro barras de 16 spans persistentes; sombreamento superior/inferior de 3 px e trilho com xadrez sutil.
+- [x] Silkscreen Regular latina WOFF2 local de 8.404 bytes; OFL 1.1 confirmada, copiada e incluída no bundle.
+- [x] Resumo com quatro pontos de 6×6 px e maior percentual disponível; expandida com quatro SVGs inline 8×8, rótulos, barras e percentuais.
+- [x] GPU N/D mostra traço e barra apagada; percentuais com largura fixa de 42 px (60 px no resumo).
+- [x] Animação de entrada só com transform/opacity em steps(3), desativada por prefers-reduced-motion.
+- [x] DESIGN.md documenta grade, paleta, tamanhos, fonte/licença, atualizações e explicação do CSS.
+- [x] cargo fmt, cargo clippy --all-targets -- -D warnings e cargo test passaram (6 testes Rust).
+- [x] npm run tauri build -- --no-bundle passou, incluindo TypeScript/Vite e release Rust.
+- [x] Licença MIT OR Apache-2.0 do crate confirmada com cargo-license; nenhum pacote transitivo novo.
+
+Validação automatizada do executável release em 2026-11-15, com perfis isolados:
+
+- Acrylic ativou sem erro; 12 redimensionamentos após aquecimento: média 21,02 ms, máximo 23,89 ms.
+- Fallback RGBA: 12 redimensionamentos após aquecimento: média 21,13 ms, máximo 25,64 ms.
+- As medições incluem a chamada IPC e a espera pelo viewport correto; são uma comparação curta local, não uma medição de CPU/RAM da Fase 5.
+- Fixtures de 0/50/100/25% produziram 0/8/16/4 blocos acesos, respectivamente.
+- De 8 para 10 blocos, somente duas classes mudaram; payload repetido produziu zero mutações do DOM.
+- Todos os 64 elementos foram preservados; GPU indisponível apagou seus 16 blocos e mostrou traço.
+- Fonte local carregada e licença acessível no bundle; uma única face; nenhuma URL de fonte externa em runtime.
+- Pontos de 6×6 px, valores de 42 px, raio de 4 px e texto #d8d8de confirmados.
+- Movimento reduzido resultou em animation:none; modo normal usou steps(3); sem overflow ou erros de JavaScript.
+- Capturas da UI recolhida e expandida foram inspecionadas após concluir a animação, com acrylic e fallback.
+
+A captura/automação nativa do Windows estava indisponível. Os testes e PNGs verificam
+a UI no WebView2, não o resultado final do compositor DWM por trás dela; essa inspeção
+nativa permanece registrada nas Pendências. As instâncias de teste foram encerradas.
+Scripts, perfis, relatórios e capturas ficam em target/fase4-*, ignorados pelo Git.
+A versão do aplicativo permanece 0.1.0; 0.8 é a versão deste plano.
+
 ## Pendências
+- Glass — decisão da Fase 4: manter acrylic escuro por padrão; a comparação release local não mostrou atraso relevante frente ao RGBA. Se a API falhar, usar automaticamente rgba(20,20,26,0.6), sem desfoque; PIXELPULSE_GLASS=fallback permite forçar esse plano B se houver artefatos ou lentidão na máquina.
+- Fase 5: conferir o recorte de 4 px e possíveis artefatos no compositor nativo do Windows, em diferentes DPI/drivers; a captura nativa estava indisponível nesta sessão. Se houver defeitos, priorizar o plano B antes de manter acrylic.
 - Fase 5: investigar e reduzir a RAM do CLI Rust com NVML ativa (média de 33,94 MB em release na Fase 1; meta abaixo de 25 MB). A CPU média observada ficou abaixo de 1%.
 
 ## Registro de versões
+- 0.8 (2026-11-15): Fase 4 concluída; glass com fallback, paleta em três tons, barras de 16 blocos, SVGs pixel, Silkscreen OFL local, resumo recolhido e movimento reduzido; checks/release e validação de DOM aprovados, decisão e limite de inspeção nativa registrados.
 - 0.7 (2026-11-15): Fase 3 concluída; janela nativa estilo ilha com DPI, tamanhos 180×36/340×230, hover temporizado e fixação por clique/Esc; fundo provisório, seis testes, fmt/Clippy e build release aprovados; geometria e interações validadas no WebView2.
 - 0.6 (2026-11-15): Fase 2 concluída; cache compartilhado de 60 amostras, modo atômico, thread com espera de 2/5 s, comandos/eventos Tauri e UI textual; fmt/Clippy, cinco testes e build release aprovados; cadência e atualização seletiva validadas no WebView2.
 - 0.5 (2026-11-15): Fase 1 concluída; coletores Rust, Snapshot serializável, NVML opcional, CLI de 2 s, três testes e checks aprovados; licenças verificadas e consumo release registrado, com RAM acima da meta como pendência da Fase 5.

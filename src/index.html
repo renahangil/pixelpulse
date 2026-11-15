@@ -3,17 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/styles/tokens.css" />
     <link rel="stylesheet" href="/styles/window.css" />
     <title>PixelPulse</title>
     <script type="module" src="/main.ts"></script>
   </head>
   <body>
     <main id="island" tabindex="0" data-mode="Collapsed" aria-label="PixelPulse: clique para fixar ou liberar">
-      <header><strong>PixelPulse</strong><span id="pin-state">Livre</span></header>
+      <section id="summary" aria-label="Maior uso entre CPU, RAM, GPU e SSD">
+        <span class="dots" aria-hidden="true"><span class="dot metric-cpu"></span><span class="dot metric-ram"></span><span class="dot metric-gpu"></span><span class="dot metric-ssd"></span></span>
+        <output id="highest" class="pixel-number">—</output>
+      </section>
       <section id="details" hidden>
-        <pre id="metrics">Aguardando a primeira amostra…</pre>
-        <p id="status" role="status">Conectando…</p>
-        <p id="hint">Passe o mouse; clique fixa. Esc libera.</p>
+        <header><span class="pixel-label">PIXELPULSE</span><span id="pin-state">Livre</span></header>
+        <div class="metrics">
+          <div class="metric metric-cpu">
+            <svg viewBox="0 0 8 8" aria-hidden="true"><path fill-rule="evenodd" d="M1 1h6v6H1z M3 3v2h2V3z M2 0h1v1H2z M5 0h1v1H5z M2 7h1v1H2z M5 7h1v1H5z M0 2h1v1H0z M0 5h1v1H0z M7 2h1v1H7z M7 5h1v1H7z"/></svg>
+            <span class="pixel-label" id="cpu-label">CPU</span><span class="bar" id="cpu-bar" role="progressbar" aria-labelledby="cpu-label" aria-valuemin="0" aria-valuemax="100"></span><output id="cpu-value" class="pixel-number">—</output>
+          </div>
+          <div class="metric metric-ram">
+            <svg viewBox="0 0 8 8" aria-hidden="true"><path fill-rule="evenodd" d="M0 1h8v5H0z M1 2v2h2V2z M5 2v2h2V2z M1 6h1v1H1z M3 6h1v1H3z M5 6h1v1H5z M7 6h1v1H7z"/></svg>
+            <span class="pixel-label" id="ram-label">RAM</span><span class="bar" id="ram-bar" role="progressbar" aria-labelledby="ram-label" aria-valuemin="0" aria-valuemax="100"></span><output id="ram-value" class="pixel-number">—</output>
+          </div>
+          <div class="metric metric-gpu">
+            <svg viewBox="0 0 8 8" aria-hidden="true"><path fill-rule="evenodd" d="M0 1h7v5H0z M2 2v3h3V2z M7 2h1v5H7z M1 6h1v1H1z M3 6h1v1H3z"/><path d="M3 3h1v1H3z"/></svg>
+            <span class="pixel-label" id="gpu-label">GPU</span><span class="bar" id="gpu-bar" role="progressbar" aria-labelledby="gpu-label" aria-valuemin="0" aria-valuemax="100"></span><output id="gpu-value" class="pixel-number">—</output>
+          </div>
+          <div class="metric metric-ssd">
+            <svg viewBox="0 0 8 8" aria-hidden="true"><path fill-rule="evenodd" d="M2 0h4v1h1v6H6v1H2V7H1V1h1z M2 2v2h4V2z M5 5v1h1V5z"/></svg>
+            <span class="pixel-label" id="ssd-label">SSD</span><span class="bar" id="ssd-bar" role="progressbar" aria-labelledby="ssd-label" aria-valuemin="0" aria-valuemax="100"></span><output id="ssd-value" class="pixel-number">—</output>
+          </div>
+        </div>
+        <footer><p id="status" role="status">Conectando…</p><p id="hint">Clique fixa. Esc libera.</p></footer>
       </section>
     </main>
   </body>

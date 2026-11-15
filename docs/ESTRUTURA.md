@@ -1,6 +1,6 @@
 # Estrutura — PixelPulse
 
-Mapa até a Fase 3; módulos posteriores serão criados somente nas fases correspondentes.
+Mapa até a Fase 4; módulos posteriores serão criados somente nas fases correspondentes.
 Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implementação.
 
 ## Raiz e configuração
@@ -22,15 +22,17 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 ## Interface
 
 - `src/`: código e recursos locais da interface, sem frameworks de UI.
-- `src/index.html`: conteúdo da ilha, cabeçalho, indicador de fixação e métricas expandidas.
-- `src/main.ts`: escuta snapshot e controla hover com atrasos, fixação, Esc e trocas de modo serializadas.
-- `src/styles/`: estilos da UI; os tokens e o visual pixel art ficam para a Fase 4.
-- `src/styles/window.css`: fundo colorido e layout provisórios, limitados ao tamanho nativo da ilha.
-- `src/ui/`: pasta reservada aos componentes da interface.
-- `src/ui/.gitkeep`: preserva a pasta de componentes ainda vazia.
+- `src/index.html`: resumo de quatro pontos, quatro linhas de métricas, SVGs inline e estrutura acessível das barras.
+- `src/main.ts`: controla interação, escuta snapshots, seleciona o fundo efetivo e atualiza o resumo ou as barras visíveis.
+- `src/styles/`: tokens e estilos da ilha pixel art com glass discreto.
+- `src/styles/window.css`: fonte local, glass, layout, trilhos, sombreamento e animação em passos com movimento reduzido.
+- `src/styles/tokens.css`: grade de 3 px, cores em três tons, texto e fundos compartilhados.
+- `src/ui/`: componentes pequenos em TypeScript puro.
+- `src/ui/metrics.ts`: cria 64 blocos uma vez e altera somente classes/valores necessários, incluindo resumo e GPU N/D.
 - `src/assets/`: recursos locais da interface, sem downloads durante a execução.
-- `src/assets/fonts/`: pasta reservada à fonte pixel com licença livre.
-- `src/assets/fonts/.gitkeep`: preserva a pasta de fontes ainda vazia.
+- `src/assets/fonts/`: uma única fonte pixel local e sua licença original.
+- `src/assets/fonts/silkscreen-regular-latin.woff2`: Silkscreen Regular latina, OFL 1.1, 8.404 bytes.
+- `src/assets/fonts/OFL.txt`: copyright e licença integral da fonte, também incluídos no bundle.
 
 ## Aplicativo Rust e Tauri
 
@@ -52,8 +54,8 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/src/cache/`: armazenamento compartilhado e ciclo de vida da thread de amostragem.
 - `src-tauri/src/cache/mod.rs`: AppState com Arc/RwLock, histórico de 60, modo atômico e avisos de mudança.
 - `src-tauri/src/cache/sampler.rs`: coleta/espera/emissão em uma thread, contador de eventos e encerramento.
-- `src-tauri/src/window.rs`: tamanhos lógicos, conversão DPI, posição no monitor primário e resposta a mudanças de escala.
-- `src-tauri/src/commands.rs`: set_mode ajusta janela e amostragem; get_snapshot lê somente o cache.
+- `src-tauri/src/window.rs`: geometria DPI e escolha de acrylic escuro ou fallback RGBA na inicialização.
+- `src-tauri/src/commands.rs`: set_mode, get_snapshot e leitura do modo de glass efetivo via get_glass_mode.
 - `src-tauri/src/ai/`: pasta reservada à leitura local de contagens de IA, apenas na Fase 6.
 - `src-tauri/src/ai/.gitkeep`: preserva a pasta de IA sem antecipar sua implementação.
 - `src-tauri/examples/`: programas de teste em linha de comando, sem abrir janela ou WebView2.
@@ -81,13 +83,13 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 ## Documentação
 
 - `docs/`: planejamento e documentação técnica do projeto.
+- `docs/DESIGN.md`: grade, paleta de três tons, fonte/OFL, dimensões, barras, glass e regras de movimento.
 - `docs/PLANO.md`: decisões, fases, critérios de aceite, pendências e registro de versões.
 - `docs/ESTRUTURA.md`: este mapa dos arquivos e pastas do projeto.
 - `docs/img/`: pasta reservada às imagens da documentação.
 - `docs/img/.gitkeep`: preserva a pasta de imagens ainda vazia.
 
-`styles/tokens.css`,
-`docs/DESIGN.md` e `docs/formatos-logs.md` serão criados nas fases que os utilizarem.
+`docs/formatos-logs.md` será criado na fase que o utilizar.
 
 ## Arquivos locais gerados (fora do controle de versão)
 
@@ -262,3 +264,27 @@ Referências oficiais consultadas:
 - [Tauri: WindowConfig](https://v2.tauri.app/reference/config/#windowconfig).
 - [Tauri: APIs da WebviewWindow](https://docs.rs/tauri/2.12.5/tauri/webview/struct.WebviewWindow.html).
 - [Tauri: coordenadas lógicas e físicas](https://v2.tauri.app/reference/javascript/api/namespacedpi/).
+
+## Visual pixel art e glass — Fase 4
+
+Os valores ficam em quatro barras de 16 spans criados uma vez; a métrica GPU pode
+ficar N/D sem inventar 0%. Recolhida, a ilha mostra quatro pontos coloridos e o
+maior percentual disponível. Detalhes da grade, paleta e do CSS estão em DESIGN.md.
+
+window-vibrancy 0.8.1 passou de dependência transitiva do Tauri para dependência
+direta do projeto: necessário para aplicar acrylic com tinta (20,20,26,72).
+Licença Apache-2.0 OR MIT, compatível com GPL-3.0, verificada com cargo-license 0.7.0
+em 2026-11-15; relatório local em target/fase4-licencas.json. Nenhum pacote transitivo
+novo nem atualização de versão foi necessário (apenas a ligação direta no lockfile).
+A UI consulta get_glass_mode e usa o fundo CSS correspondente; falha do acrylic
+preserva o funcionamento com rgba(20,20,26,0.6), sem desfoque do sistema.
+
+A única fonte adicionada é Silkscreen Regular latina, 8.404 bytes, OFL 1.1, com
+origem, hash e condições registrados em DESIGN.md. Fonte e licença completa são
+assets locais do bundle; não há download em tempo de execução. Os SVGs inline
+foram desenhados para o próprio projeto, sem biblioteca ou código visual copiado.
+
+A validação automatizada do build release usa a ferramenta Playwright já instalada
+em target/fase2-tools. Scripts, perfis isolados, relatórios e PNGs de teste ficam em
+target/fase4-*, ignorados pelo Git. As capturas mostram a composição da UI; a captura
+do compositor nativo não estava disponível na sessão, limitação registrada no plano.

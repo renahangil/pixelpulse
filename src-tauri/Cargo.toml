@@ -26,6 +26,8 @@ serde_json = "1"
 sysinfo = { version = "0.40.3", default-features = false, features = ["system", "disk"] }
 # A DLL NVML é carregada em tempo de execução; sua ausência não impede iniciar.
 nvml-wrapper = "0.13.0"
+# Acrylic opcional do sistema; a UI conserva um fundo RGBA se ele falhar.
+window-vibrancy = "0.8.1"
 
 
 # Opções oficiais: https://doc.rust-lang.org/cargo/reference/profiles.html

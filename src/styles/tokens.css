@@ -1,0 +1,29 @@
+:root {
+  /* Cada medida de arte parte desta unidade; as dimensões nativas vêm da Fase 3. */
+  --px: 3px;
+  --radius: 4px;
+  --text-primary: #d8d8de;
+  --text-secondary: #8f8fa0;
+  --surface-fallback: rgba(20, 20, 26, 0.6);
+  --surface-acrylic: rgba(20, 20, 26, 0.3);
+  --edge: rgba(216, 216, 222, 0.12);
+  --track-a: #24242e;
+  --track-b: #282832;
+  --track-top: #30303a;
+  --track-bottom: #191920;
+  --cpu-light: #91b0cc;
+  --cpu-base: #6c8da9;
+  --cpu-dark: #48637a;
+  --ram-light: #b0a0c8;
+  --ram-base: #8e7ba8;
+  --ram-dark: #645574;
+  --gpu-light: #9eb8a0;
+  --gpu-base: #7c9b80;
+  --gpu-dark: #536c56;
+  --ssd-light: #c5b08a;
+  --ssd-base: #a58d63;
+  --ssd-dark: #746044;
+  --ai-light: #d1a393;
+  --ai-base: #b28373;
+  --ai-dark: #7e594e;
+}

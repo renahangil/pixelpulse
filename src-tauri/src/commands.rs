@@ -27,3 +27,8 @@ pub fn set_mode(
 pub fn get_snapshot(state: State<'_, AppState>) -> Result<Option<Snapshot>, String> {
     state.snapshot()
 }
+
+#[tauri::command]
+pub fn get_glass_mode(state: State<'_, window::GlassMode>) -> window::GlassMode {
+    *state.inner()
+}

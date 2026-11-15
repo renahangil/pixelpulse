@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { renderMetrics, type Snapshot } from "./ui/metrics";
 
 // Mude para "click-only" para desativar hover; tempos em milissegundos.
 const INTERACTION_MODE = "hover-click" as "hover-click" | "click-only";
@@ -7,27 +8,20 @@ const EXPAND_DELAY_MS = 200;
 const COLLAPSE_DELAY_MS = 400;
 
 type Mode = "Collapsed" | "Expanded";
-interface Snapshot {
-  cpu_percent: number;
-  ram_used_mb: number;
-  ram_total_mb: number;
-  ram_percent: number;
-  disk: { used_percent: number; used_gb: number };
-  gpu: {
-    usage_percent: number | null;
-    vram_used_mb: number | null;
-    vram_total_mb: number | null;
-    temperature_c: number | null;
-  } | null;
-}
+
+
+// Leva a licença junto no bundle, inclusive ao distribuir somente o executável.
+const fontLicense = document.createElement("link");
+fontLicense.rel = "license";
+fontLicense.href = new URL("./assets/fonts/OFL.txt", import.meta.url).href;
+document.head.append(fontLicense);
 
 const island = document.querySelector<HTMLElement>("#island");
 const details = document.querySelector<HTMLElement>("#details");
-const metrics = document.querySelector<HTMLPreElement>("#metrics");
+const summary = document.querySelector<HTMLElement>("#summary");
 const status = document.querySelector<HTMLParagraphElement>("#status");
 const pinState = document.querySelector<HTMLElement>("#pin-state");
 const hint = document.querySelector<HTMLParagraphElement>("#hint");
-const formatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 let latest: Snapshot | null = null;
 let unlisten: UnlistenFn | undefined;
 let disposed = false;
@@ -41,27 +35,14 @@ let inside = false;
 let expandTimer: number | undefined;
 let collapseTimer: number | undefined;
 
-function value(number: number | null | undefined, unit: string): string {
-  return number == null ? "N/D" : `${formatter.format(number)}${unit}`;
-}
-
 function render(): void {
-  if (document.hidden || appliedMode !== "Expanded" || !latest || !metrics) return;
-  const s = latest;
-  const text = [
-    `CPU: ${value(s.cpu_percent, "%")}`,
-    `RAM: ${value(s.ram_used_mb, "")} / ${value(s.ram_total_mb, " MB")} (${value(s.ram_percent, "%")})`,
-    `Disco: ${value(s.disk.used_percent, "%")} — ${value(s.disk.used_gb, " GB")} usados`,
-    `GPU: ${value(s.gpu?.usage_percent, "%")}`,
-    `VRAM: ${value(s.gpu?.vram_used_mb, "")} / ${value(s.gpu?.vram_total_mb, " MB")}`,
-    `Temperatura GPU: ${value(s.gpu?.temperature_c, " °C")}`,
-  ].join("\n");
-  if (metrics.textContent !== text) metrics.textContent = text;
+  if (document.hidden || !latest) return;
+  renderMetrics(latest, appliedMode === "Expanded");
 }
-
 function renderInteraction(): void {
   if (island && island.dataset.mode !== appliedMode) island.dataset.mode = appliedMode;
   if (details) details.hidden = appliedMode !== "Expanded";
+  if (summary) summary.hidden = appliedMode === "Expanded";
   const label = pinned ? "Fixada" : "Livre";
   if (pinState && pinState.textContent !== label) pinState.textContent = label;
   render();
@@ -153,13 +134,15 @@ async function start(): Promise<void> {
       render();
     });
     if (disposed) { unlisten(); return; }
+    const glass = await invoke<"acrylic" | "fallback">("get_glass_mode");
+    document.documentElement.dataset.glass = glass;
     // Também sincroniza uma eventual recarga da UI com o tamanho inicial da ilha.
     await invoke("set_mode", { mode: "Collapsed" });
     const cached = await invoke<Snapshot | null>("get_snapshot");
     if (!receivedEvent) latest = cached;
     ready = true;
     if (hint) hint.textContent = INTERACTION_MODE === "hover-click"
-      ? "Passe o mouse; clique fixa. Esc libera." : "Clique abre/fixa; novo clique ou Esc libera.";
+      ? "Clique fixa. Esc libera." : "Clique abre/fixa. Esc libera.";
     renderInteraction();
     await syncMode();
   } catch (error) {

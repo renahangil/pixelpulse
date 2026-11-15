@@ -12,13 +12,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::set_mode,
-            commands::get_snapshot
+            commands::get_snapshot,
+            commands::get_glass_mode
         ])
         .setup(|app| {
             let (state, changes) = AppState::new_with_receiver();
             let collector = collectors::Collector::new()?;
             app.manage(state.clone());
-            window::initialize(app.handle(), state.clone())?;
+            app.manage(window::initialize(app.handle(), state.clone())?);
             app.manage(Sampler::start(
                 app.handle().clone(),
                 state,
