@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.4 (2026-11-15)
+Versão: 0.5 (2026-11-15)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -15,7 +15,7 @@ Repositório: github.com/renahangil/pixelpulse
 | # | Fase | Status |
 | --- | --- | --- |
 | 0 | Ambiente, repositório e estrutura | concluída |
-| 1 | Coletor de métricas (Rust) | pendente |
+| 1 | Coletor de métricas (Rust) | concluída |
 | 2 | Cache e ponte com a UI | pendente |
 | 3 | Janela estilo ilha | pendente |
 | 4 | Visual pixel art com glass discreto | pendente |
@@ -42,10 +42,44 @@ A versão do aplicativo permanece 0.1.0; 0.4 é a versão deste plano.
 CPU e RAM em execução não foram medidos nesta fase; a medição e otimização estão previstas na Fase 5.
 Nenhuma dependência foi adicionada ou atualizada.
 
+## Fase 1 — critérios de aceite e validação
+
+- [x] Módulo collectors com cpu.rs, memory.rs, disk.rs, gpu.rs e mod.rs, sem alterações na UI.
+- [x] Snapshot, DiskInfo e GpuInfo serializáveis com serde; unidades documentadas.
+- [x] sysinfo 0.40.3 com somente system/disk e atualizações seletivas, sem refresh_all.
+- [x] CPU usa uma leitura de base e respeita MINIMUM_CPU_UPDATE_INTERVAL antes da seguinte.
+- [x] Volume do sistema escolhido por SystemDrive; só o espaço desse volume é atualizado.
+- [x] nvml-wrapper 0.13.0 inicializado uma vez; GPU ausente retorna None e sensores são independentes/opcionais.
+- [x] coletor_cli imprime JSON a cada 2 s, incluindo CPU normalizada e RAM do próprio processo, sem WebView2.
+- [x] Três testes unitários passaram: RAM/unidades/total zero, disco/capacidade inválida e GPU ausente/sensores parciais.
+- [x] cargo fmt -- --check e cargo clippy --all-targets -- -D warnings passaram.
+- [x] cargo test passou: 3 testes, sem falhas; cargo build --release --example coletor_cli passou.
+- [x] cargo-license verificou os 11 pacotes novos; licenças registradas em docs/ESTRUTURA.md.
+
+Validação local em 2026-11-15, com o CLI release por 15 amostras (32,92 s incluindo
+inicialização), sem UI/WebView2. Valores de memória em MB decimais; CPU do processo
+normalizada pelo número de CPUs lógicas:
+
+- CPU média do CLI: 0,0781%; máximo observado: 0,1953%.
+- RAM média do CLI: 33,94 MB; faixa observada: 33,94–33,98 MB, acima da meta de 25 MB.
+- Intervalo médio observado entre linhas: 1,996 s; faixa 1,939–2,004 s.
+- Percentuais de CPU, RAM e disco dentro de 0–100; RAM usada/total consistente com ram_percent.
+- Volume C: validado com System.IO.DriveInfo; diferença de 8.192 bytes na última leitura de espaço usado.
+- GPU local respondeu aos três sensores: uso 5%, VRAM total 4 GiB (4.294,97 MB) e temperatura 44 °C na última amostra.
+- Ausência de GPU e sensores não suportados foram verificados pelo teste unitário, sem depender do hardware.
+
+Comando a partir da raiz:
+`cargo run --manifest-path src-tauri/Cargo.toml --release --example coletor_cli -- 15`.
+Sem o argumento 15, o CLI continua até Ctrl+C. As amostras e o resumo locais ficam
+em target/fase-1-amostras.jsonl e target/fase-1-resumo.json dentro de src-tauri,
+ignorados pelo Git. Esta observação curta não substitui a avaliação prolongada da Fase 5.
+A versão do aplicativo permanece 0.1.0; 0.5 é a versão deste plano.
+
 ## Pendências
-(nenhuma)
+- Fase 5: investigar e reduzir a RAM do CLI Rust com NVML ativa (média de 33,94 MB em release na Fase 1; meta abaixo de 25 MB). A CPU média observada ficou abaixo de 1%.
 
 ## Registro de versões
+- 0.5 (2026-11-15): Fase 1 concluída; coletores Rust, Snapshot serializável, NVML opcional, CLI de 2 s, três testes e checks aprovados; licenças verificadas e consumo release registrado, com RAM acima da meta como pendência da Fase 5.
 - 0.4 (2026-11-15): Fase 0 concluída; template limpo, nome PixelPulse, perfil release para tamanho, estrutura e documentação inicial, fmt/Clippy/build aprovados e executável medido.
 - 0.3 (2026-11-15): licença GPL-3.0 adotada.
 - 0.2 (2026-11-15): nome PixelPulse, pixel art já na v1, organização no GitHub (@renahangil), Fase 8 (README).

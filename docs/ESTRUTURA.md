@@ -1,6 +1,6 @@
 # Estrutura — PixelPulse
 
-Mapa da Fase 0; módulos funcionais serão criados somente nas fases correspondentes.
+Mapa até a Fase 1; módulos posteriores serão criados somente nas fases correspondentes.
 Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implementação.
 
 ## Raiz e configuração
@@ -43,15 +43,19 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/tauri.conf.json`: nome PixelPulse, janela, caminhos da UI e empacotamento.
 - `src-tauri/src/`: código Rust do aplicativo.
 - `src-tauri/src/main.rs`: entrada do executável Windows que chama a biblioteca do app.
-- `src-tauri/src/lib.rs`: inicialização do Tauri, sem o comando de exemplo greet.
-- `src-tauri/src/collectors/`: pasta reservada aos coletores de métricas da Fase 1.
-- `src-tauri/src/collectors/.gitkeep`: preserva a pasta de coletores ainda vazia.
+- `src-tauri/src/lib.rs`: inicialização do Tauri e exportação do módulo collectors para o CLI.
+- `src-tauri/src/collectors/`: coleta local de CPU, RAM, disco e GPU, sem integração com a UI.
+- `src-tauri/src/collectors/mod.rs`: structs serializáveis, unidades e orquestração das amostras.
+- `src-tauri/src/collectors/cpu.rs`: leitura seletiva de uso de CPU com aquecimento entre duas amostras.
+- `src-tauri/src/collectors/memory.rs`: leitura de RAM física, conversões e teste de capacidade zero.
+- `src-tauri/src/collectors/disk.rs`: seleção do disco do sistema, leitura de espaço e teste do cálculo.
+- `src-tauri/src/collectors/gpu.rs`: NVML persistente, sensores opcionais e teste do fallback.
 - `src-tauri/src/cache/`: pasta reservada ao cache da Fase 2.
 - `src-tauri/src/cache/.gitkeep`: preserva a pasta de cache ainda vazia.
 - `src-tauri/src/ai/`: pasta reservada à leitura local de contagens de IA, apenas na Fase 6.
 - `src-tauri/src/ai/.gitkeep`: preserva a pasta de IA sem antecipar sua implementação.
-- `src-tauri/examples/`: pasta reservada aos programas de teste em linha de comando.
-- `src-tauri/examples/.gitkeep`: preserva a pasta de exemplos ainda vazia.
+- `src-tauri/examples/`: programas de teste em linha de comando, sem abrir janela ou WebView2.
+- `src-tauri/examples/coletor_cli.rs`: imprime JSON a cada 2 s com o Snapshot e CPU/RAM do próprio processo.
 - `src-tauri/capabilities/`: permissões da interface perante o Tauri, herdadas do template.
 - `src-tauri/capabilities/default.json`: permissões padrão da janela principal.
 - `src-tauri/icons/`: ícones locais de empacotamento herdados do template, sem nova arte nesta fase.
@@ -80,7 +84,7 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `docs/img/`: pasta reservada às imagens da documentação.
 - `docs/img/.gitkeep`: preserva a pasta de imagens ainda vazia.
 
-`commands.rs`, `window.rs`, os arquivos dos coletores, `styles/tokens.css`,
+`commands.rs`, `window.rs`, `styles/tokens.css`,
 `docs/DESIGN.md` e `docs/formatos-logs.md` serão criados nas fases que os utilizarem.
 
 ## Arquivos locais gerados (fora do controle de versão)
@@ -101,3 +105,66 @@ licença com cargo-license ou cargo deny deverá acompanhar qualquer nova depend
 - [Tauri 2: nome do produto e configuração da janela](https://v2.tauri.app/reference/config/).
 - [Vite: raiz do projeto](https://vite.dev/config/shared-options.html#root).
 - [Vite: diretório de saída](https://vite.dev/config/build-options.html#build-outdir).
+
+## Coletor da Fase 1
+
+Em `src-tauri/`, execute `cargo run --release --example coletor_cli` e encerre com
+Ctrl+C; para uma execução finita, use `cargo run --release --example coletor_cli -- 15`.
+Da raiz, acrescente `--manifest-path src-tauri/Cargo.toml` logo depois de `cargo run`.
+O número opcional deve ser maior que zero.
+
+Cada linha é JSON com `snapshot` e `process`. RAM e VRAM usam MB decimais
+(1.000.000 bytes), disco usa GB decimais (1.000.000.000 bytes), temperatura usa °C
+e percentuais usam a escala 0–100. A CPU do próprio processo é dividida pelo número
+de CPUs lógicas para representar uma fração da capacidade total da máquina.
+
+O coletor inicia a base da CPU e espera `MINIMUM_CPU_UPDATE_INTERVAL` se a próxima
+leitura chegar cedo demais; o CLI espera 2 s antes de publicar a primeira amostra.
+A lista de volumes é obtida uma vez, e só o espaço do volume `SystemDrive` é
+atualizado depois disso; falhas de disco são devolvidas como erro, sem inventar 0%.
+Nenhuma leitura de atividade de disco, swap, frequência da CPU ou conteúdo de logs é feita.
+
+`gpu: null` representa NVML ou placa indisponível; dentro de uma GPU disponível,
+cada sensor pode ser `null` independentemente dos demais. Usa-se a primeira placa
+NVIDIA (índice 0), sem fixar modelo nem capacidade da VRAM. A UI da Fase 0 permanece
+inalterada, e o aplicativo Tauri ainda não inicia a coleta automaticamente.
+
+Dependências diretas adicionadas nesta fase:
+
+- `sysinfo 0.40.3` (MIT): consulta CPU, RAM, disco e processo; somente features `system` e `disk`, sem Rayon.
+- `nvml-wrapper 0.13.0` (MIT OR Apache-2.0): consulta GPU NVIDIA com carregamento dinâmico e ausência tolerada.
+
+A ferramenta cargo-license fica em `src-tauri/target/tools/` e serve apenas à
+verificação de licenças; não integra as dependências nem o executável do aplicativo.
+
+Referências oficiais consultadas:
+
+- [sysinfo: System e atualizações seletivas](https://docs.rs/sysinfo/0.40.3/sysinfo/struct.System.html).
+- [sysinfo: espaço do disco](https://docs.rs/sysinfo/0.40.3/sysinfo/struct.Disk.html).
+- [sysinfo: features](https://docs.rs/crate/sysinfo/0.40.3/features).
+- [nvml-wrapper: carregamento e reutilização da NVML](https://docs.rs/nvml-wrapper/0.13.0/nvml_wrapper/).
+
+### Verificação de licenças da Fase 1
+
+Verificação com cargo-license 0.7.0, em 2026-11-15:
+`src-tauri/target/tools/bin/cargo-license.exe --manifest-path src-tauri/Cargo.toml --json --output src-tauri/target/fase-1-licencas.json`.
+A comparação com o metadata anterior identificou os 11 pacotes abaixo; nenhuma
+versão já existente foi atualizada. As licenças são compatíveis com GPL-3.0:
+MIT/Apache-2.0 nas alternativas múltiplas e ISC para libloading, conforme a [lista de licenças da GNU](https://www.gnu.org/licenses/license-list.html#ISC).
+
+| Pacote adicionado | Versão | Licença declarada |
+| --- | --- | --- |
+| darling | 0.20.11 | MIT |
+| darling_core | 0.20.11 | MIT |
+| darling_macro | 0.20.11 | MIT |
+| libloading | 0.8.9 | ISC |
+| ntapi | 0.4.3 | Apache-2.0 OR MIT |
+| nvml-wrapper | 0.13.0 | Apache-2.0 OR MIT |
+| nvml-wrapper-sys | 0.10.0 | Apache-2.0 OR MIT |
+| objc2-io-kit | 0.3.2 | Apache-2.0 OR MIT OR Zlib |
+| static_assertions | 1.1.0 | Apache-2.0 OR MIT |
+| sysinfo | 0.40.3 | MIT |
+| wrapcenum-derive | 0.4.1 | Apache-2.0 OR MIT |
+
+A NVML é fornecida pelo driver NVIDIA, carregada como DLL do sistema e não
+redistribuída no repositório. O aplicativo continua funcionando quando ela está ausente.
