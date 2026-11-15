@@ -1,6 +1,7 @@
 mod cache;
 pub mod collectors;
 mod commands;
+mod window;
 
 use cache::{AppState, sampler::Sampler};
 use tauri::Manager;
@@ -17,6 +18,7 @@ pub fn run() {
             let (state, changes) = AppState::new_with_receiver();
             let collector = collectors::Collector::new()?;
             app.manage(state.clone());
+            window::initialize(app.handle(), state.clone())?;
             app.manage(Sampler::start(
                 app.handle().clone(),
                 state,

@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.6 (2026-11-15)
+Versão: 0.7 (2026-11-15)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -17,7 +17,7 @@ Repositório: github.com/renahangil/pixelpulse
 | 0 | Ambiente, repositório e estrutura | concluída |
 | 1 | Coletor de métricas (Rust) | concluída |
 | 2 | Cache e ponte com a UI | concluída |
-| 3 | Janela estilo ilha | pendente |
+| 3 | Janela estilo ilha | concluída |
 | 4 | Visual pixel art com glass discreto | pendente |
 | 5 | Medição e otimização | pendente |
 | 6 | IA local (Claude Code, Codex) | pendente |
@@ -110,10 +110,48 @@ foi encerrada após a validação. Logs, perfil e screenshot ficam ignorados em 
 Nenhuma dependência do aplicativo foi adicionada ou alterada nesta fase.
 A versão do aplicativo permanece 0.1.0; 0.6 é a versão deste plano.
 
+## Fase 3 — critérios de aceite e validação
+
+- [x] Janela sem decorações, transparente, sempre no topo, sem barra de tarefas, sem resize manual e sem foco inicial.
+- [x] Janela inicialmente oculta, posicionada no setup e só depois mostrada, sem chamada de set_focus.
+- [x] window.rs usa o monitor primário, sua origem física e o DPI; margem superior de 8 pixels lógicos.
+- [x] Tamanhos lógicos: Collapsed 180×36; Expanded 340×230; a janela nativa é redimensionada e recentralizada.
+- [x] set_mode ajusta geometria antes do modo de amostragem; mudanças de DPI também recalculam o posicionamento.
+- [x] Hover expande após 200 ms e recolhe após 400 ms; entrada/saída cancela o timer oposto.
+- [x] Clique fixa; novo clique ou Esc libera; configuração hover-click/click-only e tempos no topo de main.ts.
+- [x] UI serializa comandos e renderiza métricas apenas quando expandidas/visíveis e com texto diferente.
+- [x] Fundo colorido e fonte do sistema provisórios; nenhum visual final da Fase 4 implementado.
+- [x] cargo fmt e cargo clippy --all-targets -- -D warnings passaram.
+- [x] cargo test passou: 6 testes, incluindo geometria a 100%, 150%, 200% e origem negativa do monitor.
+- [x] npm run tauri build -- --no-bundle passou, incluindo TypeScript/Vite e release Rust.
+
+Validação em 2026-11-15, no WebView2 do executável release com perfil isolado:
+
+- Monitor primário local: 2560×1440, escala 100%.
+- Recolhida: innerSize e outerSize 180×36, posição física (1190, 8).
+- Expandida: innerSize e outerSize 340×230, posição física (1110, 8).
+- A largura nativa recolhida confirma que não há uma janela transparente de 340×230 bloqueando cliques fora da ilha.
+- Consultas nativas confirmaram foco inicial false, always-on-top true, decorada false e redimensionável false.
+- Eventos de mouse controlados no WebView2: expansão após aproximadamente 224 ms e recolhimento após 419 ms (timers mais execução do comando).
+- Entrada de 80 ms não expandiu; reentrada cancelou recolhimento; fixada permaneceu aberta após sair.
+- Segundo clique liberou a fixação, e Esc fora da área recolheu; estado final e tamanho nativo voltaram a Collapsed/180×36.
+- Click-only validado em iframe isolado com cópia do TypeScript e comandos simulados: hover não expande; clique fixa; novo clique/Esc recolhe.
+- Conteúdo expandido sem overflow; screenshots provisórios inspecionados; nenhum erro de JavaScript observado.
+
+A automação usou a ferramenta Playwright existente em target e uma porta local
+habilitada apenas na instância de teste. Eventos controlados isolaram a validação
+de movimentos reais do ponteiro. Os testes de DPI a 150% e 200% foram unitários,
+sem alterar a escala do Windows. A instância de teste foi encerrada após validar.
+Esc libera quando a ilha recebe o teclado; em hover-click, enquanto o ponteiro
+permanece dentro, o hover continua mantendo a janela aberta após liberar a fixação.
+Nenhuma dependência do aplicativo foi adicionada ou alterada.
+A versão do aplicativo permanece 0.1.0; 0.7 é a versão deste plano.
+
 ## Pendências
 - Fase 5: investigar e reduzir a RAM do CLI Rust com NVML ativa (média de 33,94 MB em release na Fase 1; meta abaixo de 25 MB). A CPU média observada ficou abaixo de 1%.
 
 ## Registro de versões
+- 0.7 (2026-11-15): Fase 3 concluída; janela nativa estilo ilha com DPI, tamanhos 180×36/340×230, hover temporizado e fixação por clique/Esc; fundo provisório, seis testes, fmt/Clippy e build release aprovados; geometria e interações validadas no WebView2.
 - 0.6 (2026-11-15): Fase 2 concluída; cache compartilhado de 60 amostras, modo atômico, thread com espera de 2/5 s, comandos/eventos Tauri e UI textual; fmt/Clippy, cinco testes e build release aprovados; cadência e atualização seletiva validadas no WebView2.
 - 0.5 (2026-11-15): Fase 1 concluída; coletores Rust, Snapshot serializável, NVML opcional, CLI de 2 s, três testes e checks aprovados; licenças verificadas e consumo release registrado, com RAM acima da meta como pendência da Fase 5.
 - 0.4 (2026-11-15): Fase 0 concluída; template limpo, nome PixelPulse, perfil release para tamanho, estrutura e documentação inicial, fmt/Clippy/build aprovados e executável medido.

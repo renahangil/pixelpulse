@@ -1,6 +1,6 @@
 # Estrutura — PixelPulse
 
-Mapa até a Fase 2; módulos posteriores serão criados somente nas fases correspondentes.
+Mapa até a Fase 3; módulos posteriores serão criados somente nas fases correspondentes.
 Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implementação.
 
 ## Raiz e configuração
@@ -22,10 +22,10 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 ## Interface
 
 - `src/`: código e recursos locais da interface, sem frameworks de UI.
-- `src/index.html`: UI de texto puro, valores das métricas e botões de teste dos dois modos.
-- `src/main.ts`: escuta snapshot, consulta o cache inicial e troca o modo por comandos Tauri.
-- `src/styles/`: pasta reservada aos estilos e tokens visuais das próximas fases.
-- `src/styles/.gitkeep`: preserva a pasta de estilos ainda vazia.
+- `src/index.html`: conteúdo da ilha, cabeçalho, indicador de fixação e métricas expandidas.
+- `src/main.ts`: escuta snapshot e controla hover com atrasos, fixação, Esc e trocas de modo serializadas.
+- `src/styles/`: estilos da UI; os tokens e o visual pixel art ficam para a Fase 4.
+- `src/styles/window.css`: fundo colorido e layout provisórios, limitados ao tamanho nativo da ilha.
 - `src/ui/`: pasta reservada aos componentes da interface.
 - `src/ui/.gitkeep`: preserva a pasta de componentes ainda vazia.
 - `src/assets/`: recursos locais da interface, sem downloads durante a execução.
@@ -39,10 +39,10 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/Cargo.toml`: metadados, dependências Rust e perfil release voltado ao tamanho.
 - `src-tauri/Cargo.lock`: versões exatas das dependências Rust usadas na compilação.
 - `src-tauri/build.rs`: aciona a preparação de recursos nativos do Tauri durante o build.
-- `src-tauri/tauri.conf.json`: nome PixelPulse, janela, caminhos da UI e empacotamento.
+- `src-tauri/tauri.conf.json`: janela transparente sem bordas, no topo, sem barra de tarefas ou foco inicial, além dos caminhos e empacotamento.
 - `src-tauri/src/`: código Rust do aplicativo.
 - `src-tauri/src/main.rs`: entrada do executável Windows que chama a biblioteca do app.
-- `src-tauri/src/lib.rs`: registra estado/comandos, inicia a thread no setup e a encerra na saída.
+- `src-tauri/src/lib.rs`: registra estado/comandos, posiciona/mostra a ilha no setup e controla a thread de coleta.
 - `src-tauri/src/collectors/`: coleta local de CPU, RAM, disco e GPU, sem integração com a UI.
 - `src-tauri/src/collectors/mod.rs`: structs serializáveis, unidades e orquestração das amostras.
 - `src-tauri/src/collectors/cpu.rs`: leitura seletiva de uso de CPU com aquecimento entre duas amostras.
@@ -52,7 +52,8 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/src/cache/`: armazenamento compartilhado e ciclo de vida da thread de amostragem.
 - `src-tauri/src/cache/mod.rs`: AppState com Arc/RwLock, histórico de 60, modo atômico e avisos de mudança.
 - `src-tauri/src/cache/sampler.rs`: coleta/espera/emissão em uma thread, contador de eventos e encerramento.
-- `src-tauri/src/commands.rs`: comandos set_mode e get_snapshot para a UI, sem coleta direta.
+- `src-tauri/src/window.rs`: tamanhos lógicos, conversão DPI, posição no monitor primário e resposta a mudanças de escala.
+- `src-tauri/src/commands.rs`: set_mode ajusta janela e amostragem; get_snapshot lê somente o cache.
 - `src-tauri/src/ai/`: pasta reservada à leitura local de contagens de IA, apenas na Fase 6.
 - `src-tauri/src/ai/.gitkeep`: preserva a pasta de IA sem antecipar sua implementação.
 - `src-tauri/examples/`: programas de teste em linha de comando, sem abrir janela ou WebView2.
@@ -85,7 +86,7 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `docs/img/`: pasta reservada às imagens da documentação.
 - `docs/img/.gitkeep`: preserva a pasta de imagens ainda vazia.
 
-`window.rs`, `styles/tokens.css`,
+`styles/tokens.css`,
 `docs/DESIGN.md` e `docs/formatos-logs.md` serão criados nas fases que os utilizarem.
 
 ## Arquivos locais gerados (fora do controle de versão)
@@ -218,3 +219,46 @@ package.json) em `src-tauri/target/fase2-tools/`, sem adicionar dependências ao
 O perfil WebView2 isolado, logs e screenshot de teste também ficam em target,
 ignorados pelo Git; a porta de depuração é ativada apenas no processo de teste.
 Referência: [Playwright com WebView2](https://playwright.dev/docs/webview2).
+
+## Janela estilo ilha — Fase 3
+
+A janela nasce oculta, sem decorações, sem sombra, transparente, sempre no topo,
+sem item na barra de tarefas, sem redimensionamento manual e sem foco inicial.
+O setup a posiciona antes de mostrá-la. Ela pode receber foco após um clique para
+que Esc funcione; hover e troca de tamanho não chamam set_focus.
+
+window.rs usa o monitor primário (não a área útil descontando a barra de tarefas),
+sua origem física, resolução e escala. A margem superior é de 8 pixels lógicos:
+8 físicos a 100%, 12 a 150% e 16 a 200%. Os tamanhos lógicos são 180×36 recolhida e
+340×230 expandida; a conversão para pixels físicos usa o DPI do monitor primário.
+Origens negativas de monitores também são consideradas. Mudanças de DPI refazem
+esse cálculo por evento, sem polling. Cada set_mode consulta novamente o monitor.
+
+set_mode ajusta posição e tamanho nativos e só então atualiza o modo da coleta.
+Se a notificação da thread falhar, tenta restaurar a geometria anterior. Não existe
+uma janela grande com uma pequena região desenhada: a área nativa recolhida é
+apenas 180×36 lógicos, deixando livres os cliques fora desse retângulo.
+
+No topo de src/main.ts ficam INTERACTION_MODE ("hover-click" ou "click-only"),
+EXPAND_DELAY_MS (200) e COLLAPSE_DELAY_MS (400). Entrar agenda expansão; sair cancela
+a expansão pendente e agenda recolhimento. Reentrar cancela o recolhimento pendente.
+Não há timers periódicos na UI, apenas timeouts de uma interação em andamento.
+
+Um clique fixa aberta; novo clique ou Esc libera a fixação. Em hover-click,
+liberar enquanto o ponteiro permanece dentro mantém a janela aberta pelo hover;
+liberar com o ponteiro fora recolhe. Em click-only, liberar recolhe imediatamente.
+Esc funciona quando a ilha recebe o teclado, por exemplo após clicar nela; não há
+atalho global nesta fase. Enter/espaço também alternam a fixação com a ilha focada.
+
+A UI serializa comandos: se o modo desejado mudar enquanto um comando está em
+andamento, aplica o próximo depois da resposta. O conteúdo expandido só aparece
+após confirmar o modo, e métricas recolhidas não geram atualização de texto no DOM.
+O fundo azul acinzentado e a fonte do sistema são provisórios; glass, fonte pixel,
+paleta final e barras segmentadas continuam reservados à Fase 4.
+
+Nenhuma dependência do aplicativo foi adicionada ou atualizada.
+Referências oficiais consultadas:
+
+- [Tauri: WindowConfig](https://v2.tauri.app/reference/config/#windowconfig).
+- [Tauri: APIs da WebviewWindow](https://docs.rs/tauri/2.12.5/tauri/webview/struct.WebviewWindow.html).
+- [Tauri: coordenadas lógicas e físicas](https://v2.tauri.app/reference/javascript/api/namespacedpi/).

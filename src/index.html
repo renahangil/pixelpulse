@@ -3,19 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/styles/window.css" />
     <title>PixelPulse</title>
     <script type="module" src="/main.ts"></script>
   </head>
   <body>
-    <main>
-      <h1>PixelPulse</h1>
-      <p>
-        <button id="collapsed" type="button" disabled>Recolhido (5 s)</button>
-        <button id="expanded" type="button" disabled>Expandido (2 s)</button>
-      </p>
-      <p id="mode">Modo: Recolhido (5 s)</p>
-      <p id="status" role="status">Conectando aos eventos…</p>
-      <pre id="metrics">Aguardando a primeira amostra…</pre>
+    <main id="island" tabindex="0" data-mode="Collapsed" aria-label="PixelPulse: clique para fixar ou liberar">
+      <header><strong>PixelPulse</strong><span id="pin-state">Livre</span></header>
+      <section id="details" hidden>
+        <pre id="metrics">Aguardando a primeira amostra…</pre>
+        <p id="status" role="status">Conectando…</p>
+        <p id="hint">Passe o mouse; clique fixa. Esc libera.</p>
+      </section>
     </main>
   </body>
 </html>
