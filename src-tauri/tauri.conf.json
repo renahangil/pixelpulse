@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "pixelpulse",
+  "productName": "PixelPulse",
   "version": "0.1.0",
   "identifier": "com.renahangil.pixelpulse",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "pixelpulse",
+        "title": "PixelPulse",
         "width": 800,
         "height": 600
       }

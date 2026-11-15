@@ -5,6 +5,12 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
+  // O HTML fica junto da UI; a saída continua em dist/ para o Tauri incorporar.
+  root: "src",
+  build: {
+    outDir: "../dist",
+    emptyOutDir: true,
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

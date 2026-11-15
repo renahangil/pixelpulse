@@ -1,7 +1,5 @@
-# Tauri + Vanilla TS
+# PixelPulse
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+Uma ilha flutuante para Windows 11 Pro que mostrará métricas do computador e uso local de IA.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+Em construção
