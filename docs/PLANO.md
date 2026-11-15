@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.5 (2026-11-15)
+Versão: 0.6 (2026-11-15)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -16,7 +16,7 @@ Repositório: github.com/renahangil/pixelpulse
 | --- | --- | --- |
 | 0 | Ambiente, repositório e estrutura | concluída |
 | 1 | Coletor de métricas (Rust) | concluída |
-| 2 | Cache e ponte com a UI | pendente |
+| 2 | Cache e ponte com a UI | concluída |
 | 3 | Janela estilo ilha | pendente |
 | 4 | Visual pixel art com glass discreto | pendente |
 | 5 | Medição e otimização | pendente |
@@ -75,10 +75,46 @@ em target/fase-1-amostras.jsonl e target/fase-1-resumo.json dentro de src-tauri,
 ignorados pelo Git. Esta observação curta não substitui a avaliação prolongada da Fase 5.
 A versão do aplicativo permanece 0.1.0; 0.5 é a versão deste plano.
 
+## Fase 2 — critérios de aceite e validação
+
+- [x] AppState com último Snapshot e histórico VecDeque de até 60 amostras, sob Arc/RwLock.
+- [x] Modo em AtomicU8 compartilhado: Collapsed = 5 s e Expanded = 2 s, inicialmente Collapsed.
+- [x] Uma thread iniciada no setup; espera bloqueante interrompida por mudança de modo ou parada.
+- [x] Comandos Tauri set_mode(mode) e get_snapshot(); leitura da UI não consulta sensores.
+- [x] Evento snapshot após gravar o cache e liberar o lock; contador temporário no stderr.
+- [x] UI de texto puro, sem CSS, com listener e dois botões de teste; GPU/sensor ausente mostra N/D.
+- [x] UI ignora payload repetido e adia a atualização do texto enquanto document.hidden for verdadeiro.
+- [x] Fluxo thread/cache/evento/UI explicado em docs/ESTRUTURA.md.
+- [x] cargo fmt e cargo clippy --all-targets -- -D warnings passaram.
+- [x] cargo test passou: 5 testes (3 dos coletores e 2 novos para histórico e modo/avisos).
+- [x] npm run tauri build -- --no-bundle passou, incluindo TypeScript/Vite e executável release.
+- [x] UI e comandos testados no WebView2 real do executável release pela conexão CDP local.
+
+Validação em 2026-11-15, com perfil WebView2 isolado dentro de target:
+
+- Recolhido: intervalos de 5,003 s e 5,007 s entre eventos recebidos pela UI.
+- Expandido: intervalos de 2,008 s, 2,014 s e 2,005 s entre eventos recebidos pela UI.
+- Contador Rust confirmado no stderr, com sequências estáveis de aproximadamente 2 s e 5 s.
+- get_snapshot retornou o Snapshot em cache; métricas reais exibidas e nenhuma folha de estilo carregada.
+- Payload repetido gerou zero mutações no DOM das métricas.
+- Visibilidade simulada como oculta manteve o texto; visibilitychange após a restauração exibiu o último payload.
+- Nenhum erro de JavaScript observado durante a validação.
+- Teste unitário confirmou descarte das amostras antigas ao inserir 65 e limite final de 60, com leitura independente do cache.
+- Teste unitário confirmou os intervalos, o aviso para acordar a thread, a coalescência de avisos e o sinal de parada.
+
+A automação nativa de Windows não conectou ao helper; a validação funcional foi feita
+pelo protocolo local do WebView2, conforme o fluxo documentado do Playwright.
+A porta e o perfil de teste foram habilitados somente no processo de validação;
+nenhuma configuração de depuração foi adicionada ao aplicativo. A instância de teste
+foi encerrada após a validação. Logs, perfil e screenshot ficam ignorados em target.
+Nenhuma dependência do aplicativo foi adicionada ou alterada nesta fase.
+A versão do aplicativo permanece 0.1.0; 0.6 é a versão deste plano.
+
 ## Pendências
 - Fase 5: investigar e reduzir a RAM do CLI Rust com NVML ativa (média de 33,94 MB em release na Fase 1; meta abaixo de 25 MB). A CPU média observada ficou abaixo de 1%.
 
 ## Registro de versões
+- 0.6 (2026-11-15): Fase 2 concluída; cache compartilhado de 60 amostras, modo atômico, thread com espera de 2/5 s, comandos/eventos Tauri e UI textual; fmt/Clippy, cinco testes e build release aprovados; cadência e atualização seletiva validadas no WebView2.
 - 0.5 (2026-11-15): Fase 1 concluída; coletores Rust, Snapshot serializável, NVML opcional, CLI de 2 s, três testes e checks aprovados; licenças verificadas e consumo release registrado, com RAM acima da meta como pendência da Fase 5.
 - 0.4 (2026-11-15): Fase 0 concluída; template limpo, nome PixelPulse, perfil release para tamanho, estrutura e documentação inicial, fmt/Clippy/build aprovados e executável medido.
 - 0.3 (2026-11-15): licença GPL-3.0 adotada.

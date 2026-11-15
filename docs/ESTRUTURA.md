@@ -1,6 +1,6 @@
 # Estrutura — PixelPulse
 
-Mapa até a Fase 1; módulos posteriores serão criados somente nas fases correspondentes.
+Mapa até a Fase 2; módulos posteriores serão criados somente nas fases correspondentes.
 Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implementação.
 
 ## Raiz e configuração
@@ -22,9 +22,8 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 ## Interface
 
 - `src/`: código e recursos locais da interface, sem frameworks de UI.
-- `src/index.html`: página inicial estática com o texto PixelPulse, antes na raiz do template.
-- `src/main.ts`: ponto de entrada TypeScript, ainda sem comportamento dinâmico.
-- `src/styles.css`: estilo mínimo provisório da página; não antecipa o visual da Fase 4.
+- `src/index.html`: UI de texto puro, valores das métricas e botões de teste dos dois modos.
+- `src/main.ts`: escuta snapshot, consulta o cache inicial e troca o modo por comandos Tauri.
 - `src/styles/`: pasta reservada aos estilos e tokens visuais das próximas fases.
 - `src/styles/.gitkeep`: preserva a pasta de estilos ainda vazia.
 - `src/ui/`: pasta reservada aos componentes da interface.
@@ -43,15 +42,17 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/tauri.conf.json`: nome PixelPulse, janela, caminhos da UI e empacotamento.
 - `src-tauri/src/`: código Rust do aplicativo.
 - `src-tauri/src/main.rs`: entrada do executável Windows que chama a biblioteca do app.
-- `src-tauri/src/lib.rs`: inicialização do Tauri e exportação do módulo collectors para o CLI.
+- `src-tauri/src/lib.rs`: registra estado/comandos, inicia a thread no setup e a encerra na saída.
 - `src-tauri/src/collectors/`: coleta local de CPU, RAM, disco e GPU, sem integração com a UI.
 - `src-tauri/src/collectors/mod.rs`: structs serializáveis, unidades e orquestração das amostras.
 - `src-tauri/src/collectors/cpu.rs`: leitura seletiva de uso de CPU com aquecimento entre duas amostras.
 - `src-tauri/src/collectors/memory.rs`: leitura de RAM física, conversões e teste de capacidade zero.
 - `src-tauri/src/collectors/disk.rs`: seleção do disco do sistema, leitura de espaço e teste do cálculo.
 - `src-tauri/src/collectors/gpu.rs`: NVML persistente, sensores opcionais e teste do fallback.
-- `src-tauri/src/cache/`: pasta reservada ao cache da Fase 2.
-- `src-tauri/src/cache/.gitkeep`: preserva a pasta de cache ainda vazia.
+- `src-tauri/src/cache/`: armazenamento compartilhado e ciclo de vida da thread de amostragem.
+- `src-tauri/src/cache/mod.rs`: AppState com Arc/RwLock, histórico de 60, modo atômico e avisos de mudança.
+- `src-tauri/src/cache/sampler.rs`: coleta/espera/emissão em uma thread, contador de eventos e encerramento.
+- `src-tauri/src/commands.rs`: comandos set_mode e get_snapshot para a UI, sem coleta direta.
 - `src-tauri/src/ai/`: pasta reservada à leitura local de contagens de IA, apenas na Fase 6.
 - `src-tauri/src/ai/.gitkeep`: preserva a pasta de IA sem antecipar sua implementação.
 - `src-tauri/examples/`: programas de teste em linha de comando, sem abrir janela ou WebView2.
@@ -84,7 +85,7 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `docs/img/`: pasta reservada às imagens da documentação.
 - `docs/img/.gitkeep`: preserva a pasta de imagens ainda vazia.
 
-`commands.rs`, `window.rs`, `styles/tokens.css`,
+`window.rs`, `styles/tokens.css`,
 `docs/DESIGN.md` e `docs/formatos-logs.md` serão criados nas fases que os utilizarem.
 
 ## Arquivos locais gerados (fora do controle de versão)
@@ -126,8 +127,8 @@ Nenhuma leitura de atividade de disco, swap, frequência da CPU ou conteúdo de 
 
 `gpu: null` representa NVML ou placa indisponível; dentro de uma GPU disponível,
 cada sensor pode ser `null` independentemente dos demais. Usa-se a primeira placa
-NVIDIA (índice 0), sem fixar modelo nem capacidade da VRAM. A UI da Fase 0 permanece
-inalterada, e o aplicativo Tauri ainda não inicia a coleta automaticamente.
+NVIDIA (índice 0), sem fixar modelo nem capacidade da VRAM. Desde a Fase 2, o setup
+do Tauri também inicia a coleta; o CLI continua disponível de forma independente.
 
 Dependências diretas adicionadas nesta fase:
 
@@ -168,3 +169,52 @@ MIT/Apache-2.0 nas alternativas múltiplas e ISC para libloading, conforme a [li
 
 A NVML é fornecida pelo driver NVIDIA, carregada como DLL do sistema e não
 redistribuída no repositório. O aplicativo continua funcionando quando ela está ausente.
+
+## Cache e ponte com a UI — Fase 2
+
+O setup cria o AppState e um Collector, registra os comandos e inicia exatamente
+uma thread de amostragem. O primeiro resultado é publicado assim que estiver pronto;
+as próximas coletas começam a cada 5 s (Collapsed, padrão) ou 2 s (Expanded).
+
+O AppState compartilha por Arc/RwLock o Snapshot atual (None antes da primeira
+coleta) e um VecDeque com as últimas 60 amostras bem-sucedidas, incluindo a atual.
+A entrada mais antiga sai antes de entrar a 61ª. O modo fica em Arc/AtomicU8.
+Um canal limitado a um aviso acorda a thread ao mudar o modo; ela recalcula o prazo
+em relação ao início da última coleta, sem filas crescentes nem espera ocupada.
+
+Após coletar, a thread escreve no cache, libera o lock e emite snapshot com o
+Snapshot como payload. Ela emite na cadência mesmo se valores se repetirem; a UI
+compara o texto e só altera o DOM quando há mudança visível. Enquanto document.hidden
+for verdadeiro, apenas guarda o último payload em memória; ao voltar, mostra esse valor.
+
+A UI registra o listener antes de chamar get_snapshot, evitando perder o primeiro
+resultado. A resposta inicial não sobrescreve um evento já recebido. get_snapshot
+só lê o cache, e set_mode recebe "Collapsed" ou "Expanded"; nenhum comando consulta
+os sensores. Os botões mudam somente a frequência, não o tamanho da janela nesta fase.
+GPU/sensor null é mostrado como N/D. Não há CSS, polling JavaScript ou dependência nova.
+
+O contador temporário escreve no stderr, por exemplo:
+`[snapshot #4] modo=Expanded intervalo=2s delta=Some(2.0001)`.
+Em `npm run tauri dev`, veja-o no terminal; ao clicar nos botões, confira os deltas
+entre eventos sucessivos de um mesmo modo (aproximadamente 2 s ou 5 s). O primeiro
+evento não tem delta; um evento de transição pode chegar logo após o clique se o
+novo prazo já venceu. O contador reinicia ao abrir novamente o aplicativo.
+Os logs não são persistidos automaticamente e não contêm prompts nem respostas.
+
+Ao sair, o Tauri sinaliza a parada, acorda a thread e aguarda seu término. Falhas de
+coleta são registradas sem substituir a última leitura boa por zeros; falhas de lock
+retornam erro aos comandos. Histórico e modo vivem apenas na memória.
+
+Referências oficiais:
+
+- [Tauri: estado gerenciado](https://v2.tauri.app/develop/state-management/).
+- [Tauri: eventos Rust para frontend](https://v2.tauri.app/develop/calling-frontend/).
+- [Tauri: comandos do frontend](https://v2.tauri.app/develop/calling-rust/).
+- [Rust: RwLock](https://doc.rust-lang.org/std/sync/struct.RwLock.html).
+- [Rust: espera com recv_timeout](https://doc.rust-lang.org/std/sync/mpsc/struct.Receiver.html#method.recv_timeout).
+
+A validação usa temporariamente playwright-core 1.65.1 (Apache-2.0, conforme seu
+package.json) em `src-tauri/target/fase2-tools/`, sem adicionar dependências ao app.
+O perfil WebView2 isolado, logs e screenshot de teste também ficam em target,
+ignorados pelo Git; a porta de depuração é ativada apenas no processo de teste.
+Referência: [Playwright com WebView2](https://playwright.dev/docs/webview2).
