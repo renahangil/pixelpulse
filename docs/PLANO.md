@@ -266,6 +266,43 @@ preservando coletores/cache Rust, antes de continuar a expandir a UI web. Medir 
 o CLI com a mesma coluna para separar o piso do Rust/NVML: a troca de UI não garante
 sozinha eliminar memória do driver. Nenhuma migração foi implementada nesta fase.
 
+### Retorno do usuário após a implementação
+
+Valores informados pelo usuário, preservando a unidade escrita ("Mb", sem confirmar
+se a coluna do sistema usa MB decimais ou MiB). CPU desta rodada e agregação dos
+processos WebView2 não foram informadas; não usar esses dados para aprovar as metas
+por uma conversão presumida de unidade ou soma incompleta.
+
+| Estado | WebView informado | PixelPulse informado | Soma se forem consumos separados |
+| --- | ---: | ---: | ---: |
+| Recolhida | 62 | 24,2 | 86,2 |
+| Expandida | 68 | 24,4 | 92,4 |
+
+A diferença informada ao expandir é de 6 no WebView e 0,2 no PixelPulse. Essas
+leituras são compatíveis com consumo moderado; confirmar unidade/coluna, todos os
+processos do grupo e CPU antes de encerrar o aceite quantitativo da fase.
+
+O usuário confirmou cantos arredondados e forneceu capturas da janela expandida e
+recolhida. O fundo aparece uniforme/cinza e a transparência/glass não está perceptível,
+segundo o relato. A configuração DWM aceita não comprova transparência efetiva.
+Não há confirmação de teste em outros DPI/drivers nem de ausência de tremulação.
+
+Avaliação: não há indicação nesses números para migrar de Tauri por RAM neste
+momento. Recomendo manter a aparência opaca por legibilidade/previsibilidade e,
+se essa for a escolha do usuário, desativar o Acrylic em uma alteração posterior
+para não solicitar um efeito sem benefício visual observado. Não estimar economia
+de CPU/RAM sem nova comparação. Se transparência passar a ser prioridade estética,
+o primeiro experimento deve usar o fallback RGBA já existente, apenas no fundo,
+sem blur e preservando a opacidade do texto/ícones; evitar dependências/flags novas.
+Nenhuma dessas mudanças visuais foi aplicada nesta avaliação.
+
+A documentação Microsoft informa que Acrylic pode ficar sólido com transparência
+desativada no Windows, economia de bateria, determinados hardwares e, no caso do
+background acrylic, desativação da janela. A ilha evita tomar foco, portanto essa
+última condição é uma hipótese relevante, não um diagnóstico confirmado. Não alterar
+preferências globais do Windows nem forçar foco como parte desta avaliação.
+Fonte: [Acrylic: adaptação e uso de GPU](https://learn.microsoft.com/en-us/windows/apps/design/style/acrylic).
+
 ### Nova medição solicitada ao usuário
 
 Executar `src-tauri/target/release/pixelpulse.exe`, com `npm run tauri dev` fechado.
@@ -281,11 +318,11 @@ nesse encerramento; 0.9 identifica esta atualização do plano, não uma conclus
 
 ## Pendências
 - Glass — decisão da Fase 4: manter acrylic escuro por padrão; a comparação release local não mostrou atraso relevante frente ao RGBA. Se a API falhar, usar automaticamente rgba(20,20,26,0.6), sem desfoque; PIXELPULSE_GLASS=fallback permite forçar esse plano B se houver artefatos ou lentidão na máquina.
-- Fase 5: preferência de cantos pequenos e Desktop Acrylic confirmados por atributo DWM; inspeção visual de recorte/artefatos e diferentes DPI/drivers aguarda o usuário. Manter Acrylic; usar o plano B caso sejam observados defeitos reais.
+- Fase 5: cantos arredondados confirmados pelo usuário em capturas; glass/transparência não perceptível. Avaliação recomenda aparência opaca com posterior desligamento do Acrylic, ou experimento RGBA se houver preferência estética; decisão visual ainda não implementada. Outros DPI/drivers e tremulação não validados.
 - Fase 5: meta de RAM Rust ainda não aprovada (25,32 MB privados/51,37 MB working set no app otimizado). Medir novamente com coluna/unidade explícitas e comparar ao CLI/NVML (working set médio histórico de 33,94 MB); recomendação de UI nativa se o limite rígido continuar excedido está no relatório acima.
 
 ## Registro de versões
-- 0.9 (2026-11-15): Fase 5 implementada após auditoria/aprovação; pausa oculta, eventos deduplicados, GPU seletiva, logs só em debug e diagnóstico/cantos DWM; release e oito testes aprovados. Aceite permanece pendente de nova medição do usuário e inspeção visual nativa.
+- 0.9 (2026-11-15): inclui retorno do usuário (WebView 62/68; PixelPulse 24,2/24,4; cantos arredondados e glass não perceptível), com unidade/CPU ainda pendentes. Fase 5 implementada após auditoria/aprovação; pausa oculta, eventos deduplicados, GPU seletiva, logs só em debug e diagnóstico/cantos DWM; release e oito testes aprovados. Aceite permanece pendente de nova medição do usuário e inspeção visual nativa.
 - 0.8 (2026-11-15): Fase 4 concluída; glass com fallback, paleta em três tons, barras de 16 blocos, SVGs pixel, Silkscreen OFL local, resumo recolhido e movimento reduzido; checks/release e validação de DOM aprovados, decisão e limite de inspeção nativa registrados.
 - 0.7 (2026-11-15): Fase 3 concluída; janela nativa estilo ilha com DPI, tamanhos 180×36/340×230, hover temporizado e fixação por clique/Esc; fundo provisório, seis testes, fmt/Clippy e build release aprovados; geometria e interações validadas no WebView2.
 - 0.6 (2026-11-15): Fase 2 concluída; cache compartilhado de 60 amostras, modo atômico, thread com espera de 2/5 s, comandos/eventos Tauri e UI textual; fmt/Clippy, cinco testes e build release aprovados; cadência e atualização seletiva validadas no WebView2.
