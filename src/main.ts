@@ -25,7 +25,7 @@ const hint = document.querySelector<HTMLParagraphElement>("#hint");
 let latest: Snapshot | null = null;
 let unlisten: UnlistenFn | undefined;
 let disposed = false;
-let receivedEvent = false;
+let eventRevision = 0;
 let ready = false;
 let syncing = false;
 let appliedMode: Mode = "Collapsed";
@@ -57,6 +57,8 @@ async function syncMode(): Promise<void> {
       const next = desiredMode;
       await invoke("set_mode", { mode: next });
       appliedMode = next;
+      // O resumo pode ter suprimido eventos: ler o cache ao abrir as quatro linhas.
+      await readLatest();
       renderInteraction();
     }
     if (status) status.textContent = "Recebendo métricas.";
@@ -129,7 +131,7 @@ window.addEventListener("keydown", (event) => {
 async function start(): Promise<void> {
   try {
     unlisten = await listen<Snapshot>("snapshot", ({ payload }) => {
-      receivedEvent = true;
+      eventRevision += 1;
       latest = payload;
       render();
     });
@@ -138,8 +140,7 @@ async function start(): Promise<void> {
     document.documentElement.dataset.glass = glass;
     // Também sincroniza uma eventual recarga da UI com o tamanho inicial da ilha.
     await invoke("set_mode", { mode: "Collapsed" });
-    const cached = await invoke<Snapshot | null>("get_snapshot");
-    if (!receivedEvent) latest = cached;
+    await syncVisibility();
     ready = true;
     if (hint) hint.textContent = INTERACTION_MODE === "hover-click"
       ? "Clique fixa. Esc libera." : "Clique abre/fixa. Esc libera.";
@@ -150,7 +151,31 @@ async function start(): Promise<void> {
   }
 }
 
-document.addEventListener("visibilitychange", render);
+async function readLatest(): Promise<void> {
+  const revision = eventRevision;
+  const cached = await invoke<Snapshot | null>("get_snapshot");
+  // Uma resposta do cache não pode sobrescrever um evento mais novo.
+  if (revision === eventRevision) latest = cached;
+  render();
+}
+
+let visibilitySync: Promise<void> = Promise.resolve();
+function syncVisibility(): Promise<void> {
+  const visible = !document.hidden;
+  // Serializar impede que uma resposta lenta de ocultar vença uma restauração.
+  visibilitySync = visibilitySync.catch(() => {}).then(async () => {
+    await invoke("set_ui_visibility", { visible });
+    if (visible && !disposed) await readLatest();
+  });
+  return visibilitySync;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) clearTimers();
+  void syncVisibility().catch(error => {
+    if (status) status.textContent = `Erro de visibilidade: ${String(error)}`;
+  });
+});
 window.addEventListener("pagehide", () => {
   disposed = true;
   clearTimers();

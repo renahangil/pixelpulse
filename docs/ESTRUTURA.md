@@ -1,6 +1,6 @@
 # Estrutura — PixelPulse
 
-Mapa até a Fase 4; módulos posteriores serão criados somente nas fases correspondentes.
+Mapa até a implementação da Fase 5; módulos posteriores serão criados somente nas fases correspondentes.
 Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implementação.
 
 ## Raiz e configuração
@@ -52,10 +52,10 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/src/collectors/disk.rs`: seleção do disco do sistema, leitura de espaço e teste do cálculo.
 - `src-tauri/src/collectors/gpu.rs`: NVML persistente, sensores opcionais e teste do fallback.
 - `src-tauri/src/cache/`: armazenamento compartilhado e ciclo de vida da thread de amostragem.
-- `src-tauri/src/cache/mod.rs`: AppState com Arc/RwLock, histórico de 60, modo atômico e avisos de mudança.
-- `src-tauri/src/cache/sampler.rs`: coleta/espera/emissão em uma thread, contador de eventos e encerramento.
-- `src-tauri/src/window.rs`: geometria DPI e escolha de acrylic escuro ou fallback RGBA na inicialização.
-- `src-tauri/src/commands.rs`: set_mode, get_snapshot e leitura do modo de glass efetivo via get_glass_mode.
+- `src-tauri/src/cache/mod.rs`: AppState com Arc/RwLock, histórico de 60, modo/visibilidade atômicos e avisos de mudança.
+- `src-tauri/src/cache/sampler.rs`: coleta seletiva, pausa oculta, deduplicação visual, contador só em debug e encerramento.
+- `src-tauri/src/window.rs`: geometria DPI, acrylic/fallback, preferência de cantos pequenos e diagnóstico DWM do próprio HWND.
+- `src-tauri/src/commands.rs`: set_mode/get_snapshot/get_glass_mode, aviso set_ui_visibility e consulta get_glass_diagnostics.
 - `src-tauri/src/ai/`: pasta reservada à leitura local de contagens de IA, apenas na Fase 6.
 - `src-tauri/src/ai/.gitkeep`: preserva a pasta de IA sem antecipar sua implementação.
 - `src-tauri/examples/`: programas de teste em linha de comando, sem abrir janela ou WebView2.
@@ -175,6 +175,10 @@ redistribuída no repositório. O aplicativo continua funcionando quando ela est
 
 ## Cache e ponte com a UI — Fase 2
 
+Esta seção descreve o comportamento original da Fase 2. Na Fase 5, a emissão passou
+a ser deduplicada, a ocultação pausa sensores e o contador ficou só em debug;
+o funcionamento atual está descrito em "Otimizações da Fase 5", ao final.
+
 O setup cria o AppState e um Collector, registra os comandos e inicia exatamente
 uma thread de amostragem. O primeiro resultado é publicado assim que estiver pronto;
 as próximas coletas começam a cada 5 s (Collapsed, padrão) ou 2 s (Expanded).
@@ -272,7 +276,7 @@ ficar N/D sem inventar 0%. Recolhida, a ilha mostra quatro pontos coloridos e o
 maior percentual disponível. Detalhes da grade, paleta e do CSS estão em DESIGN.md.
 
 window-vibrancy 0.8.1 passou de dependência transitiva do Tauri para dependência
-direta do projeto: necessário para aplicar acrylic com tinta (20,20,26,72).
+direta do projeto: necessário para aplicar acrylic; a tinta (20,20,26,72) só atua no caminho legado (ver Fase 5).
 Licença Apache-2.0 OR MIT, compatível com GPL-3.0, verificada com cargo-license 0.7.0
 em 2026-11-15; relatório local em target/fase4-licencas.json. Nenhum pacote transitivo
 novo nem atualização de versão foi necessário (apenas a ligação direta no lockfile).
@@ -288,3 +292,41 @@ A validação automatizada do build release usa a ferramenta Playwright já inst
 em target/fase2-tools. Scripts, perfis isolados, relatórios e PNGs de teste ficam em
 target/fase4-*, ignorados pelo Git. As capturas mostram a composição da UI; a captura
 do compositor nativo não estava disponível na sessão, limitação registrada no plano.
+
+
+## Otimizações da Fase 5
+
+windows 0.62.2 passou também a dependência direta, restrita ao Windows, para ler
+atributos DWM, solicitar cantos pequenos e consultar flags de visibilidade do HWND.
+Já estava no lockfile; não houve pacote ou versão transitiva nova. Licença
+Apache-2.0 OR MIT, compatível com GPL-3.0, confirmada com cargo-license 0.7.0.
+Não adicionamos xcap, captura permanente, flags de WebView2 nem recurso de bandeja.
+
+A UI avisa document.hidden por set_ui_visibility. O coletor bloqueia em um canal
+quando o documento está oculto; se apenas o HWND estiver oculto/minimizado, verifica
+suas flags a cada 5 s sem consultar sensores. Recolhimento e perda de foco não
+suspendem a ilha. Uma coleta já iniciada pode terminar ao ocultar; a sinalização
+oculta impede sua emissão. Na volta, a base da CPU é refeita, respeitando o intervalo
+mínimo de duas leituras antes de publicar novamente. O histórico mantém até 60
+amostras coletadas, sem inventar entradas para os períodos ocultos.
+
+collect_for_ui consulta só utilização GPU; VRAM e temperatura ficam null no app.
+collect continua completo no CLI. A deduplicação dos eventos usa o inteiro e os
+16 segmentos exibidos, preservando diferenças que alterem só uma dessas partes.
+O contador de snapshots e o aviso de modo só existem em builds de desenvolvimento;
+erros e o diagnóstico inicial do glass continuam disponíveis em release.
+
+A validação local e os scripts de medição ficam em src-tauri/target/fase5-*,
+ignorados pelo Git. A cópia fase5-antes.exe preserva o release anterior à otimização;
+os relatórios comparam processos filhos apenas dessa instância, com perfis isolados.
+No ensaio controlado, a porta CDP local é habilitada apenas no processo de teste para
+fixar o modo e impedir hover acidental; a conexão é encerrada antes da medição.
+Essa opção de diagnóstico permite controle local do WebView enquanto ativa e não
+foi adicionada ao tauri.conf.json nem aos argumentos do aplicativo distribuído.
+CPU normalizada usa o tempo acumulado dividido pelo tempo de parede e CPUs lógicas.
+RAM privada residente e working set total são reportados separadamente: somar working
+sets do grupo pode contar páginas compartilhadas mais de uma vez. Os resultados e
+a pendência de medição do usuário estão em PLANO.md.
+
+- [Visibilidade nativa](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-iswindowvisible).
+- [Estado minimizado](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-isiconic).

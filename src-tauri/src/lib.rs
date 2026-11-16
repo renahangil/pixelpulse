@@ -13,7 +13,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::set_mode,
             commands::get_snapshot,
-            commands::get_glass_mode
+            commands::get_glass_mode,
+            commands::set_ui_visibility,
+            commands::get_glass_diagnostics
         ])
         .setup(|app| {
             let (state, changes) = AppState::new_with_receiver();

@@ -17,8 +17,18 @@ impl GpuCollector {
         }
     }
 
-    pub(super) fn collect(&self) -> Option<GpuInfo> {
+    pub(super) fn collect(&self, details: bool) -> Option<GpuInfo> {
         let device = self.nvml.as_ref()?.device_by_index(0).ok()?;
+        // A ilha só exibe uso: não consultar VRAM/temperatura economiza chamadas à DLL.
+        // O CLI mantém todos os sensores para diagnóstico, sem alterar seu contrato.
+        if !details {
+            return Some(GpuInfo {
+                usage_percent: device.utilization_rates().ok().map(|usage| usage.gpu),
+                vram_used_mb: None,
+                vram_total_mb: None,
+                temperature_c: None,
+            });
+        }
         Some(sensor_info(
             device.utilization_rates().map(|usage| usage.gpu),
             device.memory_info(),
@@ -48,7 +58,8 @@ mod tests {
 
     #[test]
     fn gpu_ausente_e_sensores_parciais_nao_causam_falha() {
-        assert!(GpuCollector { nvml: None }.collect().is_none());
+        assert!(GpuCollector { nvml: None }.collect(true).is_none());
+        assert!(GpuCollector { nvml: None }.collect(false).is_none());
         let info = sensor_info(
             Err(NvmlError::NotSupported),
             Err(NvmlError::NotSupported),

@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.8 (2026-11-15)
+Versão: 0.9 (2026-11-15)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -19,7 +19,7 @@ Repositório: github.com/renahangil/pixelpulse
 | 2 | Cache e ponte com a UI | concluída |
 | 3 | Janela estilo ilha | concluída |
 | 4 | Visual pixel art com glass discreto | concluída |
-| 5 | Medição e otimização | pendente |
+| 5 | Medição e otimização | implementada; aguardando medição do usuário e inspeção visual nativa |
 | 6 | IA local (Claude Code, Codex) | pendente |
 | 7 | Acabamento (bandeja, autostart, config) | pendente |
 | 8 | README e publicação | pendente |
@@ -149,7 +149,7 @@ A versão do aplicativo permanece 0.1.0; 0.7 é a versão deste plano.
 
 ## Fase 4 — critérios de aceite e validação
 
-- [x] API oficial de window-vibrancy 0.8.1 conferida; acrylic com tinta (20,20,26,72) e fallback rgba(20,20,26,0.6) sem blur.
+- [x] API oficial de window-vibrancy 0.8.1 conferida; acrylic e fallback rgba(20,20,26,0.6) sem blur. Correção na Fase 5: a tinta (20,20,26,72) só é utilizada no caminho legado do crate.
 - [x] Cantos CSS de 4 px e recorte do conteúdo; geometria nativa da Fase 3 preservada.
 - [x] tokens.css com grade --px:3px, textos solicitados e três tons discretos de CPU/RAM/GPU/SSD/IA.
 - [x] Quatro barras de 16 spans persistentes; sombreamento superior/inferior de 3 px e trilho com xadrez sutil.
@@ -181,12 +181,111 @@ nativa permanece registrada nas Pendências. As instâncias de teste foram encer
 Scripts, perfis, relatórios e capturas ficam em target/fase4-*, ignorados pelo Git.
 A versão do aplicativo permanece 0.1.0; 0.8 é a versão deste plano.
 
+## Fase 5 — implementação, medição e aceite pendente
+
+A auditoria foi entregue antes das alterações; o usuário aprovou a implementação
+mantendo Acrylic. Medida inicial corrigida pelo usuário: aproximadamente 24 MB de
+RAM e CPU em poucos décimos (exibição arredondada de 0%), em `npm run tauri dev`.
+O relato anterior de 20% estava incorreto e não é usado como referência de ganho.
+Esse número de desenvolvimento não é diretamente comparável ao release.
+
+- [x] Acrylic mantido por padrão; alternativa RGBA preservada, sem flags de WebView2.
+- [x] Conferida a implementação instalada: no Windows 11 recente, window-vibrancy usa DWMSBT_TRANSIENTWINDOW e ignora o argumento RGBA; escurecimento CSS mantido e documentação corrigida.
+- [x] Solicitado DWMWCP_ROUNDSMALL e criado diagnóstico dos atributos apenas do próprio HWND, sem listar outras janelas nem capturar a tela.
+- [x] AppState recebe visibilidade do documento por atômico/canal; ocultação pausa sensores e eventos, sem confundir recolhimento ou falta de foco com ocultação.
+- [x] Flags nativas de ocultação/minimização verificadas sem bloquear o event loop; quando só a janela está oculta, a verificação de flags continua a cada 5 s sem sensores.
+- [x] Retomada reinicializa a base da CPU; uma amostra já em andamento pode concluir durante a transição, sem emitir se o documento já foi marcado oculto.
+- [x] Cache continua registrando todas as leituras visíveis até 60; deduplicação de evento considera inteiro/segmentos expandidos ou maior inteiro recolhido.
+- [x] Expandir/restaurar consulta o cache, com proteção contra resposta mais antiga que um evento; timers de hover são cancelados ao ocultar.
+- [x] App consulta apenas uso GPU; CLI mantém VRAM e temperatura opcionais. Snapshot completo preservado, sem micro-otimizações fora do escopo.
+- [x] Contador de eventos e aviso de modo limitados a debug; erros e diagnóstico inicial permanecem em release.
+- [x] cargo fmt, cargo clippy --all-targets -- -D warnings e cargo test aprovados (8 testes, incluindo deduplicação por segmento e interrupção da espera).
+- [x] npm run tauri build -- --no-bundle aprovado; TypeScript, Vite e executável release.
+- [x] windows 0.62.2 já transitivo tornado direto, somente no Windows; Apache-2.0 OR MIT confirmado com cargo-license; nenhum pacote/versão transitiva novo.
+- [x] Release real: get_glass_diagnostics retornou backdrop_type=3, corner_preference=3, errors=[]; UI GPU não consultou sensores extras.
+- [x] Teste de visibilitychange no WebView2: cache congelado e zero eventos durante 6,3 s após estabilizar a ocultação; retomada confirmada, 64 blocos preservados e nenhum erro JS.
+- [x] Regressão WebView2 com Acrylic e RGBA: 0/8/16/4 segmentos, só duas classes na transição 8→10, payload igual sem mutações, GPU ausente apagada, fonte local, movimento reduzido e nenhum overflow/erro JS. Fixtures isoladas com o coletor pausado para não serem substituídas por amostras reais.
+- [x] Doze redimensionamentos aquecidos por modo: Acrylic média 17,81 ms/máximo 22,72 ms; RGBA média 18,62 ms/máximo 23,51 ms. Medida IPC/viewport, não uma inspeção de pixels do compositor.
+- [ ] Usuário medir novamente o executável release, recolhido e expandido, usando a mesma coluna/unidade de memória para antes e depois.
+- [ ] Inspeção visual final do compositor: cantos, artefatos, expandir/recolher e diferentes DPI/drivers. A ferramenta nativa ainda não conectou ao helper nesta sessão.
+
+A leitura do atributo DWM confirma a configuração aceita, não a aparência dos pixels.
+A preferência de cantos pequenos é uma indicação ao sistema, sem garantia de raio
+físico igual ao CSS de 4 px. Não declaramos uma inspeção visual concluída por consultar
+DwmIsCompositionEnabled ou enumerar janelas; essas operações não validam Acrylic.
+
+### Antes e depois em release
+
+Comparação sequencial local em 2026-11-15: cópia do release da Fase 4 (commit
+9598338) e release otimizado, ambos com Acrylic, modo Collapsed fixado em 180×36.
+Perfis isolados; 10 s de aquecimento, oito CPUs lógicas, sete processos por árvore
+com PIDs estáveis e 12 leituras de memória por versão. Ensaios anteriores em que
+hover mudou o modo foram descartados para esta comparação.
+
+A porta CDP foi habilitada temporariamente somente nessas instâncias para fixar o
+modo e impedir hover acidental. A conexão foi encerrada antes de coletar os
+contadores. Isso não é uma alteração dos argumentos de produção e pode acrescentar
+algum custo de diagnóstico; repetir sem depuração na medição do usuário. A opção
+permite controle local do WebView enquanto ativa, por isso fica fora do app final.
+
+| Métrica | Antes | Depois |
+| --- | ---: | ---: |
+| Duração dos contadores | 124,44 s | 125,75 s |
+| CPU média Rust normalizada | 0,041% | 0,008% |
+| CPU média grupo Rust + WebView2 | 0,088% | 0,064% |
+| RAM privada residente Rust (média) | 25,39 MB | 25,32 MB |
+| RAM privada residente grupo (média) | 91,47 MB | 91,33 MB |
+| Working set total Rust (média) | 53,28 MB | 51,37 MB |
+| Soma dos working sets do grupo (média) | 371,52 MB | 372,05 MB |
+
+Memória em MB decimais (1.000.000 bytes), CPU pela diferença de tempo acumulado de
+cada processo dividida por seu intervalo medido e pelas oito CPUs lógicas. O grupo
+inclui somente os descendentes da instância testada; não inclui o DWM compartilhado
+do desktop nem outros WebViews. Somar working sets pode contar páginas compartilhadas
+mais de uma vez; não é o mesmo indicador de memória privada do Gerenciador de Tarefas.
+A CPU do DWM/GPU não foi isolada, portanto estes números não medem todo o custo do glass.
+
+O Rust caiu aproximadamente 0,033 ponto percentual de CPU nesta rodada; o grupo caiu
+0,024 ponto. Não atribuímos um percentual de ganho garantido a uma única comparação.
+RAM privada permaneceu praticamente igual: não houve redução relevante demonstrada.
+Executável otimizado: 3.452.928 bytes, contra 3.447.808 bytes do release anterior
+(+5.120 bytes). Logs/cópia anterior/JSON/scripts locais: target/fase5-*, ignorados.
+
+### Metas e recomendação
+
+A CPU do Rust ficou abaixo de 1%. A memória privada residente do grupo ficou abaixo
+de 120 MB neste ensaio. A do Rust, 25,32 MB decimais (aproximadamente 24,15 MiB),
+ainda excede o teto literal de 25 MB. Pelo working set total do Rust, 51,37 MB,
+a meta também não é atingida. Não alteramos a meta nem declaramos a RAM aprovada por
+trocar de coluna/unidade; a nova medição deve identificar qual coluna está sendo usada.
+
+Recomendação: manter Tauri + Acrylic durante esta validação, pois a CPU já é baixa
+e trocar o material não demonstrou vantagem. Se o teto de 25 MB for obrigatório e
+a nova medição confirmar o excesso, recomendo prototipar uma UI nativa Win32/Direct2D,
+preservando coletores/cache Rust, antes de continuar a expandir a UI web. Medir também
+o CLI com a mesma coluna para separar o piso do Rust/NVML: a troca de UI não garante
+sozinha eliminar memória do driver. Nenhuma migração foi implementada nesta fase.
+
+### Nova medição solicitada ao usuário
+
+Executar `src-tauri/target/release/pixelpulse.exe`, com `npm run tauri dev` fechado.
+Aguardar 30 s, observar 2 min recolhido e 2 min expandido/fixado. Informar CPU média
+ou faixa e RAM do processo PixelPulse, RAM do grupo incluindo os processos WebView2,
+nome da coluna e unidade (MB/MiB). Conferir os cantos sobre fundos claros/escuros,
+expansão repetida e escala habitual; informar qualquer tremulação ou lentidão.
+Se houver artefato, comparar com PIXELPULSE_GLASS=fallback sem alterar outras opções.
+
+A fase permanece em validação: o registro do depois do usuário e a inspeção visual
+são necessários para encerrar o aceite. A tag de fase concluída será criada somente
+nesse encerramento; 0.9 identifica esta atualização do plano, não uma conclusão falsa.
+
 ## Pendências
 - Glass — decisão da Fase 4: manter acrylic escuro por padrão; a comparação release local não mostrou atraso relevante frente ao RGBA. Se a API falhar, usar automaticamente rgba(20,20,26,0.6), sem desfoque; PIXELPULSE_GLASS=fallback permite forçar esse plano B se houver artefatos ou lentidão na máquina.
-- Fase 5: conferir o recorte de 4 px e possíveis artefatos no compositor nativo do Windows, em diferentes DPI/drivers; a captura nativa estava indisponível nesta sessão. Se houver defeitos, priorizar o plano B antes de manter acrylic.
-- Fase 5: investigar e reduzir a RAM do CLI Rust com NVML ativa (média de 33,94 MB em release na Fase 1; meta abaixo de 25 MB). A CPU média observada ficou abaixo de 1%.
+- Fase 5: preferência de cantos pequenos e Desktop Acrylic confirmados por atributo DWM; inspeção visual de recorte/artefatos e diferentes DPI/drivers aguarda o usuário. Manter Acrylic; usar o plano B caso sejam observados defeitos reais.
+- Fase 5: meta de RAM Rust ainda não aprovada (25,32 MB privados/51,37 MB working set no app otimizado). Medir novamente com coluna/unidade explícitas e comparar ao CLI/NVML (working set médio histórico de 33,94 MB); recomendação de UI nativa se o limite rígido continuar excedido está no relatório acima.
 
 ## Registro de versões
+- 0.9 (2026-11-15): Fase 5 implementada após auditoria/aprovação; pausa oculta, eventos deduplicados, GPU seletiva, logs só em debug e diagnóstico/cantos DWM; release e oito testes aprovados. Aceite permanece pendente de nova medição do usuário e inspeção visual nativa.
 - 0.8 (2026-11-15): Fase 4 concluída; glass com fallback, paleta em três tons, barras de 16 blocos, SVGs pixel, Silkscreen OFL local, resumo recolhido e movimento reduzido; checks/release e validação de DOM aprovados, decisão e limite de inspeção nativa registrados.
 - 0.7 (2026-11-15): Fase 3 concluída; janela nativa estilo ilha com DPI, tamanhos 180×36/340×230, hover temporizado e fixação por clique/Esc; fundo provisório, seis testes, fmt/Clippy e build release aprovados; geometria e interações validadas no WebView2.
 - 0.6 (2026-11-15): Fase 2 concluída; cache compartilhado de 60 amostras, modo atômico, thread com espera de 2/5 s, comandos/eventos Tauri e UI textual; fmt/Clippy, cinco testes e build release aprovados; cadência e atualização seletiva validadas no WebView2.

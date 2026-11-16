@@ -42,8 +42,11 @@ a borda superior é #30303a e a inferior #191920.
 
 A assinatura oficial consultada de window-vibrancy 0.8.1 é
 `apply_acrylic(window: impl HasWindowHandle, color: Option<Color>) -> Result<(), Error>`;
-Color é uma tupla (u8, u8, u8, u8), RGBA. A tentativa usa (20,20,26,72): tinta escura
-com alpha de aproximadamente 28%. Sobre ela, a superfície CSS usa rgba(20,20,26,0.3).
+Color é uma tupla (u8, u8, u8, u8), RGBA. A tentativa passa (20,20,26,72), mas
+essa tinta só é usada pelo caminho legado do crate. No Windows 11 recente, o
+window-vibrancy 0.8.1 escolhe DWMSBT_TRANSIENTWINDOW (Desktop Acrylic) e ignora
+esse argumento. A superfície CSS rgba(20,20,26,0.3) fornece o escurecimento local;
+não prometemos controle da opacidade do material nativo por essa tupla.
 
 O plano B é exatamente rgba(20,20,26,0.6), sem blur/backdrop-filter CSS nem desfoque
 do sistema. Falha ao aplicar acrylic seleciona esse plano automaticamente. A decisão
@@ -51,7 +54,12 @@ da comparação local é registrada em Pendências de docs/PLANO.md. A variável
 ambiente PIXELPULSE_GLASS=acrylic ou fallback permite comparar as alternativas sem
 introduzir uma tela de configurações. O modo efetivo chega à UI por get_glass_mode.
 
-O raio CSS de 4 px e overflow:hidden recortam a superfície da UI. A documentação
+O raio CSS de 4 px e overflow:hidden recortam a superfície da UI.
+A Fase 5 solicita DWMWCP_ROUNDSMALL no HWND para aproximar os cantos do material
+nativo ao conteúdo. Isso é uma preferência: o Windows decide o raio físico e pode
+não arredondar uma janela transparente. get_glass_diagnostics consulta os atributos
+do nosso HWND; backdrop_type=3 indica Desktop Acrylic e corner_preference=3 indica
+a preferência pequena aceita. Essa leitura não substitui a inspeção visual do DWM. A documentação
 oficial alerta para atraso do acrylic em determinados builds do Windows; a validação
 nativa do compositor em outros drivers/DPI continua sendo assunto da Fase 5.
 
@@ -90,7 +98,11 @@ limitada a 0–16. A UI altera somente as classes no intervalo entre a quantidad
 anterior e a nova; rótulos, saídas e atributos acessíveis também evitam escritas iguais.
 Valores reservam 42 px por linha e 60 px no resumo, impedindo o deslocamento das colunas.
 O resumo oculto e as linhas ocultas não são atualizados, e document.hidden continua
-suspendendo escritas visuais. Não há canvas, imagens grandes ou loops de animação.
+suspendendo escritas visuais. Na Fase 5, visibilitychange também avisa o Rust para
+pausar a coleta. O app mantém o histórico de cada leitura visível, mas só emite
+quando o percentual inteiro ou a quantidade de segmentos visíveis muda; no resumo,
+compara apenas o maior percentual inteiro. Ao expandir/restaurar, a UI consulta o
+cache para não depender de um evento anteriormente suprimido. Não há canvas, imagens grandes ou loops de animação.
 
 ## Movimento
 
@@ -112,3 +124,10 @@ interpolação de largura/altura na UI.
 
 Referências: [apply_acrylic](https://docs.rs/window-vibrancy/0.8.1/window_vibrancy/fn.apply_acrylic.html)
 e [clear_acrylic](https://docs.rs/window-vibrancy/0.8.1/window_vibrancy/fn.clear_acrylic.html).
+
+
+Referências nativas da Fase 5:
+
+- [DwmGetWindowAttribute](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmgetwindowattribute).
+- [Desktop Acrylic e demais materiais](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type).
+- [Preferência de cantos](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_window_corner_preference).

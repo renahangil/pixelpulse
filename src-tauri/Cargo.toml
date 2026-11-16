@@ -29,6 +29,10 @@ nvml-wrapper = "0.13.0"
 # Acrylic opcional do sistema; a UI conserva um fundo RGBA se ele falhar.
 window-vibrancy = "0.8.1"
 
+[target.'cfg(windows)'.dependencies]
+# Bindings já transitivos: consultar apenas o DWM da nossa janela, sem captura.
+windows = { version = "0.62.2", features = ["Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
+
 
 # Opções oficiais: https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.release]

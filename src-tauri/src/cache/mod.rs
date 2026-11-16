@@ -42,6 +42,7 @@ pub struct AppState {
     cache: Arc<RwLock<SnapshotCache>>,
     mode: Arc<AtomicU8>,
     stopped: Arc<AtomicBool>,
+    ui_visible: Arc<AtomicBool>,
     wake: SyncSender<()>,
 }
 
@@ -57,6 +58,7 @@ impl AppState {
                 })),
                 mode: Arc::new(AtomicU8::new(Mode::Collapsed as u8)),
                 stopped: Arc::new(AtomicBool::new(false)),
+                ui_visible: Arc::new(AtomicBool::new(true)),
                 wake,
             },
             receiver,
@@ -95,6 +97,7 @@ impl AppState {
     pub fn set_mode(&self, mode: Mode) -> Result<(), String> {
         if self.mode.swap(mode as u8, Ordering::Relaxed) != mode as u8 {
             self.notify()?;
+            #[cfg(debug_assertions)]
             eprintln!("[modo] {mode:?}: intervalo={}s", mode.interval().as_secs());
         }
         Ok(())
@@ -105,6 +108,17 @@ impl AppState {
             Ok(()) | Err(TrySendError::Full(())) => Ok(()),
             Err(TrySendError::Disconnected(())) => Err("thread de amostragem encerrada".to_owned()),
         }
+    }
+
+    pub fn set_ui_visible(&self, visible: bool) -> Result<(), String> {
+        if self.ui_visible.swap(visible, Ordering::Relaxed) != visible {
+            self.notify()?;
+        }
+        Ok(())
+    }
+
+    pub fn ui_visible(&self) -> bool {
+        self.ui_visible.load(Ordering::Relaxed)
     }
 
     pub fn stop(&self) {

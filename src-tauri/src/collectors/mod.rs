@@ -63,6 +63,15 @@ impl Collector {
     /// A primeira chamada espera o mínimo necessário para ter duas amostras de CPU.
     /// O chamador define a cadência normal (por exemplo, 2 s); aqui não há loop.
     pub fn collect(&mut self) -> Result<Snapshot, Box<dyn Error>> {
+        self.collect_with_gpu_details(true)
+    }
+
+    /// Mantém o mesmo formato do Snapshot, mas não consulta sensores ocultos na UI.
+    pub fn collect_for_ui(&mut self) -> Result<Snapshot, Box<dyn Error>> {
+        self.collect_with_gpu_details(false)
+    }
+
+    fn collect_with_gpu_details(&mut self, details: bool) -> Result<Snapshot, Box<dyn Error>> {
         let cpu_percent = cpu::collect(&mut self.system, &mut self.last_cpu_sample);
         let (ram_used_mb, ram_total_mb, ram_percent) = memory::collect(&mut self.system);
         Ok(Snapshot {
@@ -71,8 +80,13 @@ impl Collector {
             ram_total_mb,
             ram_percent,
             disk: self.disk.collect()?,
-            gpu: self.gpu.collect(),
+            gpu: self.gpu.collect(details),
         })
+    }
+
+    /// Após uma pausa, não misturamos todo o período oculto com a leitura atual.
+    pub fn reset_cpu_baseline(&mut self) {
+        self.last_cpu_sample = cpu::prime(&mut self.system);
     }
 
     /// Permite comparar a CPU do processo com a capacidade total da máquina.

@@ -32,3 +32,14 @@ pub fn get_snapshot(state: State<'_, AppState>) -> Result<Option<Snapshot>, Stri
 pub fn get_glass_mode(state: State<'_, window::GlassMode>) -> window::GlassMode {
     *state.inner()
 }
+
+/// Visibilidade do documento complementa is_visible/is_minimized da janela nativa.
+#[tauri::command]
+pub fn set_ui_visibility(visible: bool, state: State<'_, AppState>) -> Result<(), String> {
+    state.set_ui_visible(visible)
+}
+
+#[tauri::command]
+pub fn get_glass_diagnostics(window: WebviewWindow) -> window::GlassDiagnostics {
+    window::glass_diagnostics(&window)
+}
