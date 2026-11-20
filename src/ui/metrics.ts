@@ -69,6 +69,7 @@ for (const name of METRICS) {
   const element = document.getElementById(`${name}-bar`);
   if (element) bars.set(name, new SegmentedBar(element, name));
 }
+const dots = document.querySelectorAll<HTMLSpanElement>(".dots .dot");
 const highest = document.getElementById("highest");
 
 export function renderMetrics(snapshot: Snapshot, expanded: boolean): void {
@@ -80,7 +81,15 @@ export function renderMetrics(snapshot: Snapshot, expanded: boolean): void {
     METRICS.forEach((name, index) => bars.get(name)?.update(values[index]));
   } else {
     // GPU indisponível não vira 0%; ela simplesmente não participa do máximo.
-    const available = values.filter((value): value is number => value !== null);
-    setText(highest, available.length ? `${Math.round(Math.max(...available))}%` : "—");
+    let winner = -1;
+    let maximum = -1;
+    values.forEach((value, index) => {
+      if (value !== null && value > maximum) {
+        winner = index;
+        maximum = value;
+      }
+    });
+    dots.forEach((dot, index) => dot.classList.toggle("is-highest", index === winner));
+    setText(highest, winner < 0 ? "—" : `${METRICS[winner].toUpperCase()} ${Math.round(maximum)}%`);
   }
 }

@@ -8,13 +8,11 @@ use tauri::{
 
 const TOP_MARGIN: f64 = 8.0;
 
-// A comparação local decide o padrão; a variável de ambiente permite testar o plano B.
-const DEFAULT_ACRYLIC: bool = true;
-
 #[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GlassMode {
     Acrylic,
+    Opaque,
     Fallback,
 }
 
@@ -22,7 +20,7 @@ fn configure_glass(window: &WebviewWindow) -> GlassMode {
     let prefer_acrylic = match std::env::var("PIXELPULSE_GLASS").as_deref() {
         Ok("acrylic") => true,
         Ok("fallback") => false,
-        _ => DEFAULT_ACRYLIC,
+        _ => return GlassMode::Opaque,
     };
     if prefer_acrylic {
         // No Windows 11 recente, o crate usa Desktop Acrylic e ignora esta tinta.
@@ -76,6 +74,10 @@ pub fn apply_mode(window: &WebviewWindow, mode: Mode) -> Result<(), Box<dyn std:
     if window.inner_size()? != size {
         window.set_size(size)?;
     }
+    #[cfg(windows)]
+    if window.is_visible()? {
+        super::z_order::raise(window.hwnd()?)?;
+    }
     Ok(())
 }
 
@@ -108,6 +110,14 @@ pub fn initialize(
         report.backdrop_type, report.corner_preference, report.errors
     );
     window.show()?;
+    #[cfg(windows)]
+    {
+        let hwnd = window.hwnd()?;
+        super::z_order::raise(hwnd)?;
+        if let Err(error) = super::z_order::watch(hwnd) {
+            eprintln!("[janela] monitoramento de sobreposição indisponível: {error}");
+        }
+    }
     Ok(glass)
 }
 

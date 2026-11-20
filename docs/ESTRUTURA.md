@@ -40,7 +40,7 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 - `src-tauri/.gitignore`: ignora o build Rust e os esquemas gerados pelo Tauri.
 - `src-tauri/Cargo.toml`: metadados, dependências Rust e perfil release voltado ao tamanho.
 - `src-tauri/Cargo.lock`: versões exatas das dependências Rust usadas na compilação.
-- `src-tauri/build.rs`: aciona a preparação de recursos nativos do Tauri durante o build.
+- `src-tauri/build.rs`: prepara recursos nativos do Tauri e recompila o recurso Windows quando icon.ico muda.
 - `src-tauri/tauri.conf.json`: janela transparente sem bordas, no topo, sem barra de tarefas ou foco inicial, além dos caminhos e empacotamento.
 - `src-tauri/src/`: código Rust do aplicativo.
 - `src-tauri/src/main.rs`: entrada do executável Windows que chama a biblioteca do app.
@@ -330,3 +330,8 @@ a pendência de medição do usuário estão em PLANO.md.
 
 - [Visibilidade nativa](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-iswindowvisible).
 - [Estado minimizado](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-isiconic).
+
+## Fechamento visual
+
+- `src-tauri/src/z_order.rs` mantém a ordem da ilha com eventos Win32 e remove os hooks ao encerrar. O recurso de acessibilidade Win32 é uma feature do crate Windows já usado.
+- `src-tauri/icons/pixelpulse.svg` é a arte original. Os PNGs deste diretório são suas versões redimensionadas e o ICO/ICNS guardam o mesmo ícone em formatos de empacotamento.

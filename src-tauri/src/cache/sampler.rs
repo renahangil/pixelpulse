@@ -163,7 +163,7 @@ fn wait_for_next(state: &AppState, changes: &Receiver<()>, last_sample: Instant)
 /// Mesmas quantizações usadas pelo TypeScript, sem strings nem alocações por evento.
 #[derive(Debug, PartialEq, Eq)]
 enum Presentation {
-    Collapsed(Option<u8>),
+    Collapsed(Option<(usize, u8)>),
     Expanded([Option<(u8, u8)>; 4]),
 }
 
@@ -187,10 +187,15 @@ impl Presentation {
         match mode {
             Mode::Collapsed => Self::Collapsed(
                 values
-                    .into_iter()
-                    .flatten()
-                    .map(|value| value.round() as u8)
-                    .max(),
+                    .iter()
+                    .enumerate()
+                    .fold(None, |winner, (index, value)| match value {
+                        Some(value) if winner.is_none_or(|(_, maximum)| *value > maximum) => {
+                            Some((index, *value))
+                        }
+                        _ => winner,
+                    })
+                    .map(|(index, value)| (index, value.round() as u8)),
             ),
             Mode::Expanded => Self::Expanded(values.map(|value| {
                 value.map(|value| (value.round() as u8, (value / 100.0 * 16.0).round() as u8))
@@ -228,6 +233,14 @@ mod tests {
             Presentation::Expanded([Some((3, 1)), Some((50, 8)), None, Some((25, 4))])
         );
         assert_ne!(collapsed, Presentation::new(&snapshot, Mode::Expanded));
+
+        // O percentual continua 50%, mas agora o ponto e o rótulo são da CPU.
+        snapshot.cpu_percent = 50.0;
+        assert_eq!(
+            Presentation::new(&snapshot, Mode::Collapsed),
+            Presentation::Collapsed(Some((0, 50)))
+        );
+        assert_ne!(collapsed, Presentation::new(&snapshot, Mode::Collapsed));
     }
 
     #[test]

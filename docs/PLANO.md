@@ -1,10 +1,10 @@
 # Plano — PixelPulse
-Versão: 0.9 (2026-11-15)
+Versão: 0.10 (2026-11-20)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
 - Nome do app: PixelPulse. Rust + Tauri 2, UI web leve, Windows 11 Pro.
-- v1: visual pixel art com cores e sombreamento discretos sobre glass escuro; barras em blocos de pixel, cada métrica com uma cor.
+- v1: visual pixel art com cores e sombreamento discretos sobre fundo escuro opaco; barras em blocos de pixel, cada métrica com uma cor.
 - Expansão: hover (200 ms) mais clique para fixar.
 - SSD na v1 = percentual de espaço usado do disco do sistema. Atividade de leitura e escrita fica para depois.
 - IA na v1 = tokens do dia lidos de logs locais (Claude Code e Codex). Copilot e APIs ficam para depois.
@@ -316,12 +316,23 @@ A fase permanece em validação: o registro do depois do usuário e a inspeção
 são necessários para encerrar o aceite. A tag de fase concluída será criada somente
 nesse encerramento; 0.9 identifica esta atualização do plano, não uma conclusão falsa.
 
+## Fechamento visual — branch fase-6-ui-melhorias
+
+- Windows 11 x64 25H2 ou 26H2 atualizado é o alvo recomendado. Windows 11 24H2 em edições ainda atendidas e Windows 10 22H2 com WebView2 atualizado são alvos secundários de verificação. A entrega desta branch é um executável Windows x64.
+- Tauri 2, WebView2, HTML/CSS/TypeScript e a estética pixel art permanecem. Fundo fosco opaco por padrão, cantos CSS de 4 px e preferência nativa pequena onde suportada. PIXELPULSE_GLASS=acrylic ou fallback ficam disponíveis para comparar os efeitos manualmente.
+- A ilha reafirma sua ordem ao mostrar/redimensionar. Eventos Win32 de primeiro plano, exibição e reordenação verificam se outra janela normal do desktop ocupa a mesma região e está acima. O ajuste usa SWP_NOACTIVATE e o hook é removido na saída. Superfícies protegidas e tela cheia exclusiva têm regras próprias do Windows.
+- O resumo mostra o rótulo e o valor da maior métrica. O ponto vencedor cresce de 6 a 9 px em uma célula fixa. Empates seguem a ordem CPU, RAM, GPU, SSD. GPU indisponível é excluída. O cache diferencia vencedores mesmo se o percentual arredondado repetir.
+- O menu de contexto nativo oferece Encerrar PixelPulse e aciona a saída normal do Tauri para remover o hook e parar a coleta.
+- O ícone usa um pulso em degraus e quatro pixels que remetem ao painel. O SVG mestre gera os ícones de empacotamento, incluindo o recurso ICO do executável. Referências funcionais da pesquisa: [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor/wiki/Main-Window), [Rainmeter](https://www.rainmeter.net/) e [PowerToys](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/overview).
+- Validação: fmt, Clippy sem warnings, oito testes Rust e build release aprovados. No WebView2, troca de vencedor com o mesmo percentual, 100% sem corte, tamanho dos pontos, expansão/recolhimento e GPU N/D aprovados. Uma janela concorrente nativa confirmou recuperação do topo sem troca de foco. A ação Encerrar PixelPulse no menu encerrou o processo com código 0. O ICO foi confirmado no PE x64 nos seis tamanhos de 16 a 256 px. Executável: src-tauri/target/release/pixelpulse.exe, 3.438.592 bytes.
+
 ## Pendências
 - Glass — decisão da Fase 4: manter acrylic escuro por padrão; a comparação release local não mostrou atraso relevante frente ao RGBA. Se a API falhar, usar automaticamente rgba(20,20,26,0.6), sem desfoque; PIXELPULSE_GLASS=fallback permite forçar esse plano B se houver artefatos ou lentidão na máquina.
-- Fase 5: cantos arredondados confirmados pelo usuário em capturas; glass/transparência não perceptível. Avaliação recomenda aparência opaca com posterior desligamento do Acrylic, ou experimento RGBA se houver preferência estética; decisão visual ainda não implementada. Outros DPI/drivers e tremulação não validados.
+- Fechamento visual: o relato de Acrylic aparentemente opaco orientou a adoção de fundo opaco. Conferir WhatsApp e diferentes DPIs no ambiente de uso. O teste local de sobreposição usou janela concorrente controlada.
 - Fase 5: meta de RAM Rust ainda não aprovada (25,32 MB privados/51,37 MB working set no app otimizado). Medir novamente com coluna/unidade explícitas e comparar ao CLI/NVML (working set médio histórico de 33,94 MB); recomendação de UI nativa se o limite rígido continuar excedido está no relatório acima.
 
 ## Registro de versões
+- 0.10 (2026-11-20): fechamento da UI com fundo opaco, identificação da maior métrica, correção de sobreposição por eventos, menu Encerrar PixelPulse e ícone próprio. A fase de IA local permanece no roteiro.
 - 0.9 (2026-11-15): inclui retorno do usuário (WebView 62/68; PixelPulse 24,2/24,4; cantos arredondados e glass não perceptível), com unidade/CPU ainda pendentes. Fase 5 implementada após auditoria/aprovação; pausa oculta, eventos deduplicados, GPU seletiva, logs só em debug e diagnóstico/cantos DWM; release e oito testes aprovados. Aceite permanece pendente de nova medição do usuário e inspeção visual nativa.
 - 0.8 (2026-11-15): Fase 4 concluída; glass com fallback, paleta em três tons, barras de 16 blocos, SVGs pixel, Silkscreen OFL local, resumo recolhido e movimento reduzido; checks/release e validação de DOM aprovados, decisão e limite de inspeção nativa registrados.
 - 0.7 (2026-11-15): Fase 3 concluída; janela nativa estilo ilha com DPI, tamanhos 180×36/340×230, hover temporizado e fixação por clique/Esc; fundo provisório, seis testes, fmt/Clippy e build release aprovados; geometria e interações validadas no WebView2.

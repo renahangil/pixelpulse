@@ -43,3 +43,26 @@ pub fn set_ui_visibility(visible: bool, state: State<'_, AppState>) -> Result<()
 pub fn get_glass_diagnostics(window: WebviewWindow) -> window::GlassDiagnostics {
     window::glass_diagnostics(&window)
 }
+
+pub const EXIT_MENU_ID: &str = "encerrar-pixelpulse";
+
+pub fn context_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    let exit = tauri::menu::MenuItem::with_id(
+        app,
+        EXIT_MENU_ID,
+        "Encerrar PixelPulse",
+        true,
+        None::<&str>,
+    )?;
+    tauri::menu::Menu::with_items(app, &[&exit])
+}
+
+#[tauri::command]
+pub async fn open_context_menu(
+    window: WebviewWindow,
+    menu: State<'_, tauri::menu::Menu<tauri::Wry>>,
+) -> Result<(), String> {
+    window
+        .popup_menu(menu.inner())
+        .map_err(|error| error.to_string())
+}

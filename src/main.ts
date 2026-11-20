@@ -116,6 +116,12 @@ island?.addEventListener("mouseleave", () => {
 });
 
 island?.addEventListener("click", togglePin);
+island?.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  void invoke("open_context_menu").catch(error => {
+    console.error("Não foi possível abrir o menu do PixelPulse", error);
+  });
+});
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     pinned = false;
@@ -136,7 +142,7 @@ async function start(): Promise<void> {
       render();
     });
     if (disposed) { unlisten(); return; }
-    const glass = await invoke<"acrylic" | "fallback">("get_glass_mode");
+    const glass = await invoke<"acrylic" | "fallback" | "opaque">("get_glass_mode");
     document.documentElement.dataset.glass = glass;
     // Também sincroniza uma eventual recarga da UI com o tamanho inicial da ilha.
     await invoke("set_mode", { mode: "Collapsed" });

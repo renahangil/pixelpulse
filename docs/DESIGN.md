@@ -131,3 +131,17 @@ Referências nativas da Fase 5:
 - [DwmGetWindowAttribute](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmgetwindowattribute).
 - [Desktop Acrylic e demais materiais](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type).
 - [Preferência de cantos](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_window_corner_preference).
+
+
+## Fechamento visual
+
+A ilha usa fundo opaco #25252d e preserva a grade e os cantos de 4 px. Os efeitos
+Acrylic e RGBA são opções de diagnóstico. Na ilha recolhida, cada ponto tem uma
+célula fixa de 9 px. O vencedor ocupa os 9 px e recebe uma borda superior clara.
+Os demais pontos têm 6 px. O rótulo da métrica acompanha o percentual com largura
+reservada. No empate exato, a ordem é CPU, RAM, GPU e SSD.
+
+O ícone original combina um pulso azul em degraus com quatro pontos nas cores das
+métricas. A matriz simples mantém o símbolo legível no Explorer. Para regenerar
+os ícones, use npm run tauri icon -- src-tauri/icons/pixelpulse.svg --output
+src-tauri/target/fase6-icons e copie os formatos existentes de desktop.
