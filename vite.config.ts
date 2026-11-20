@@ -10,6 +10,7 @@ export default defineConfig(() => ({
   build: {
     outDir: "../dist",
     emptyOutDir: true,
+    rolldownOptions: { input: ["src/index.html", "src/settings.html"] },
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { renderMetrics, type Snapshot } from "./ui/metrics";
+import { renderMetrics, syncVolumeRows, type Snapshot } from "./ui/metrics";
+import { t, useLanguage } from "./ui/i18n";
+import type { Configuration, Preferences } from "./ui/configuration";
 
 // Mude para "click-only" para desativar hover; tempos em milissegundos.
 const INTERACTION_MODE = "hover-click" as "hover-click" | "click-only";
@@ -23,7 +25,10 @@ const status = document.querySelector<HTMLParagraphElement>("#status");
 const pinState = document.querySelector<HTMLElement>("#pin-state");
 const hint = document.querySelector<HTMLParagraphElement>("#hint");
 let latest: Snapshot | null = null;
-let unlisten: UnlistenFn | undefined;
+const unlisten: UnlistenFn[] = [];
+let configuration: Configuration | undefined;
+let currentVolumeCount = 0;
+let resizeRevision = 0;
 let disposed = false;
 let eventRevision = 0;
 let ready = false;
@@ -43,7 +48,10 @@ function renderInteraction(): void {
   if (island && island.dataset.mode !== appliedMode) island.dataset.mode = appliedMode;
   if (details) details.hidden = appliedMode !== "Expanded";
   if (summary) summary.hidden = appliedMode === "Expanded";
-  const label = pinned ? "Fixada" : "Livre";
+  const label = t(pinned ? "pinned" : "unpinned");
+  if (hint) hint.textContent = t(INTERACTION_MODE === "hover-click" ? "hint" : "hintClick");
+  island?.setAttribute("aria-label", t("island"));
+  summary?.setAttribute("aria-label", t("highest"));
   if (pinState && pinState.textContent !== label) pinState.textContent = label;
   render();
 }
@@ -55,16 +63,18 @@ async function syncMode(): Promise<void> {
     // Um comando por vez: uma resposta lenta de expandir não desfaz um recolher posterior.
     while (!disposed && appliedMode !== desiredMode) {
       const next = desiredMode;
+      resizeRevision += 1;
       await invoke("set_mode", { mode: next });
       appliedMode = next;
       // O resumo pode ter suprimido eventos: ler o cache ao abrir as quatro linhas.
       await readLatest();
       renderInteraction();
     }
-    if (status) status.textContent = "Recebendo métricas.";
+    if (status) status.textContent = t("ready");
   } catch (error) {
+    console.error(error);
     desiredMode = appliedMode;
-    if (status) status.textContent = `Erro ao ajustar janela: ${String(error)}`;
+    if (status) status.textContent = t("error");
   } finally {
     syncing = false;
   }
@@ -119,7 +129,7 @@ island?.addEventListener("click", togglePin);
 island?.addEventListener("contextmenu", (event) => {
   event.preventDefault();
   void invoke("open_context_menu").catch(error => {
-    console.error("Não foi possível abrir o menu do PixelPulse", error);
+    console.error(error);
   });
 });
 window.addEventListener("keydown", (event) => {
@@ -136,24 +146,68 @@ window.addEventListener("keydown", (event) => {
 
 async function start(): Promise<void> {
   try {
-    unlisten = await listen<Snapshot>("snapshot", ({ payload }) => {
+    unlisten.push(await listen<Snapshot>("snapshot", ({ payload }) => {
       eventRevision += 1;
       latest = payload;
       render();
-    });
-    if (disposed) { unlisten(); return; }
+    }));
+    unlisten.push(await listen<Preferences>("preferences-changed", ({ payload }) => {
+      if (!configuration) return;
+      configuration.preferences = payload;
+      applyConfiguration(true);
+    }));
+    unlisten.push(await listen("inventory-ready", () => void readConfiguration().catch(console.error)));
+    if (disposed) { unlisten.forEach(stop => stop()); return; }
+    await readConfiguration();
     const glass = await invoke<"acrylic" | "fallback" | "opaque">("get_glass_mode");
     document.documentElement.dataset.glass = glass;
     // Também sincroniza uma eventual recarga da UI com o tamanho inicial da ilha.
     await invoke("set_mode", { mode: "Collapsed" });
     await syncVisibility();
     ready = true;
-    if (hint) hint.textContent = INTERACTION_MODE === "hover-click"
-      ? "Clique fixa. Esc libera." : "Clique abre/fixa. Esc libera.";
     renderInteraction();
     await syncMode();
   } catch (error) {
-    if (status) status.textContent = `Erro ao conectar: ${String(error)}`;
+    console.error(error);
+    if (status) status.textContent = t("error");
+  }
+}
+
+async function readConfiguration(): Promise<void> {
+  configuration = await invoke<Configuration>("get_settings");
+  applyConfiguration(false);
+}
+
+function applyConfiguration(animate: boolean): void {
+  if (!configuration) return;
+  const { preferences, inventory, volume_limit } = configuration;
+  useLanguage(preferences.language);
+  const selected = (inventory?.volumes ?? []).filter(volume => !volume.system && preferences.volumes.includes(volume.id))
+    .slice(0, volume_limit);
+  syncVolumeRows(selected);
+  renderInteraction();
+  if (ready && status) status.textContent = t("ready");
+  if (animate && selected.length !== currentVolumeCount && appliedMode === "Expanded") {
+    void animateHeight(230 + 36 * selected.length).catch(console.error);
+  }
+  currentVolumeCount = selected.length;
+}
+
+async function animateHeight(target: number): Promise<void> {
+  const revision = ++resizeRevision;
+  const initial = window.innerHeight;
+  const duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 155;
+  const start = performance.now();
+  let last = initial;
+  while (!disposed && revision === resizeRevision && appliedMode === "Expanded") {
+    const progress = duration === 0 ? 1 : Math.min(1, (performance.now() - start) / duration);
+    const height = Math.round(initial + (target - initial) * (1 - (1 - progress) ** 3));
+    if (height !== last) {
+      await invoke("resize_island", { height });
+      last = height;
+    }
+    if (progress === 1) break;
+    await new Promise<number>(resolve => requestAnimationFrame(resolve));
   }
 }
 
@@ -179,12 +233,14 @@ function syncVisibility(): Promise<void> {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) clearTimers();
   void syncVisibility().catch(error => {
-    if (status) status.textContent = `Erro de visibilidade: ${String(error)}`;
+    console.error(error);
+    if (status) status.textContent = t("error");
   });
 });
 window.addEventListener("pagehide", () => {
   disposed = true;
   clearTimers();
-  unlisten?.();
+  resizeRevision += 1;
+  unlisten.forEach(stop => stop());
 }, { once: true });
 void start();

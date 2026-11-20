@@ -1,65 +1,150 @@
-use std::{error::Error, io, path::PathBuf};
+use std::{error::Error, io};
 
-use sysinfo::{Disk, DiskRefreshKind, Disks};
+use serde::Serialize;
+use sysinfo::{Disk, DiskKind, DiskRefreshKind, Disks};
 
 use super::{BYTES_PER_GB, DiskInfo};
 
+#[derive(Clone, Serialize)]
+pub struct Volume {
+    pub id: String,
+    pub letter: String,
+    pub label: String,
+    pub media: &'static str,
+    pub system: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct VolumeUsage {
+    pub id: String,
+    pub letter: String,
+    pub usage: Option<DiskInfo>,
+}
+
 pub(super) struct DiskCollector {
-    disk: Disk,
+    disks: Vec<(Volume, Disk)>,
+    pub system_letter: Option<String>,
 }
 
 impl DiskCollector {
     pub(super) fn new() -> Result<Self, Box<dyn Error>> {
-        let root = system_root()?;
-        // Enumeramos volumes uma vez; nas amostras só consultamos espaço do selecionado.
+        let system_letter = system_letter();
         let disks = Vec::<Disk>::from(Disks::new_with_refreshed_list_specifics(
-            DiskRefreshKind::nothing(),
-        )?);
-        let disk = disks
-            .into_iter()
-            .find(|disk| {
-                if cfg!(windows) {
-                    disk.mount_point()
-                        .to_string_lossy()
-                        .eq_ignore_ascii_case(&root.to_string_lossy())
-                } else {
-                    disk.mount_point() == root
-                }
-            })
-            .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::NotFound, "volume do sistema não encontrado")
-            })?;
-        Ok(Self { disk })
+            DiskRefreshKind::nothing().with_kind(),
+        )?)
+        .into_iter()
+        .filter_map(|disk| {
+            let letter = disk.mount_point().to_str()?.to_uppercase();
+            if !is_drive_letter(&letter) {
+                return None;
+            }
+            let system = Some(&letter) == system_letter.as_ref();
+            let volume = Volume {
+                id: volume_id(&letter).unwrap_or_else(|| letter.clone()),
+                letter,
+                label: disk.name().to_string_lossy().into_owned(),
+                media: match disk.kind() {
+                    DiskKind::SSD => "ssd",
+                    DiskKind::HDD => "hdd",
+                    _ => "unknown",
+                },
+                system,
+            };
+            Some((volume, disk))
+        })
+        .collect();
+        let mut result = Self {
+            disks,
+            system_letter,
+        };
+        result
+            .disks
+            .sort_by(|(a, _), (b, _)| a.letter.cmp(&b.letter));
+        Ok(result)
     }
 
-    pub(super) fn collect(&mut self) -> io::Result<DiskInfo> {
-        // storage é capacidade/espaço livre; io_usage seria atividade de leitura/escrita.
-        if !self
-            .disk
-            .refresh_specifics(DiskRefreshKind::nothing().with_storage())
-        {
-            return Err(io::Error::other(
-                "não foi possível atualizar o disco do sistema",
-            ));
+    pub fn empty() -> Self {
+        Self {
+            disks: Vec::new(),
+            system_letter: system_letter(),
         }
-        from_space(self.disk.total_space(), self.disk.available_space())
+    }
+
+    pub fn inventory(&self) -> Vec<Volume> {
+        self.disks
+            .iter()
+            .map(|(volume, _)| volume.clone())
+            .collect()
+    }
+
+    pub(super) fn collect(&mut self, selected: &[String]) -> (Option<DiskInfo>, Vec<VolumeUsage>) {
+        let mut system = None;
+        let mut extras = Vec::new();
+        for (volume, disk) in &mut self.disks {
+            if !volume.system && !selected.contains(&volume.id) {
+                continue;
+            }
+            // Cada volume pode desaparecer ou falhar sem invalidar CPU, RAM ou os demais.
+            let usage = disk
+                .refresh_specifics(DiskRefreshKind::nothing().with_storage())
+                .then(|| from_space(disk.total_space(), disk.available_space()).ok())
+                .flatten();
+            if volume.system {
+                system = usage;
+            } else {
+                extras.push(VolumeUsage {
+                    id: volume.id.clone(),
+                    letter: volume.letter.clone(),
+                    usage,
+                });
+            }
+        }
+        (system, extras)
     }
 }
 
-fn system_root() -> io::Result<PathBuf> {
+fn is_drive_letter(letter: &str) -> bool {
+    matches!(letter.as_bytes(), [drive, b':', b'\\'] if drive.is_ascii_uppercase())
+}
+
+fn system_letter() -> Option<String> {
     #[cfg(windows)]
     {
-        // Não presumimos a unidade C: o Windows pode estar instalado em outra unidade.
-        let drive = std::env::var_os("SystemDrive")
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "SystemDrive ausente"))?;
-        let mut root = PathBuf::from(drive);
-        root.push(std::path::MAIN_SEPARATOR.to_string());
-        // push("\\") preserva o prefixo da unidade no Windows (por exemplo, D:\\).
-        Ok(root)
+        use windows::Win32::System::SystemInformation::GetWindowsDirectoryW;
+        let mut buffer = [0_u16; 260];
+        // SAFETY: buffer válido e limitado. Só precisamos dos três caracteres da raiz.
+        let len = unsafe { GetWindowsDirectoryW(Some(&mut buffer)) } as usize;
+        if (3..buffer.len()).contains(&len) {
+            let drive = String::from_utf16_lossy(&buffer[..3]).to_uppercase();
+            if is_drive_letter(&drive) {
+                return Some(drive);
+            }
+        }
+        let drive = format!("{}\\", std::env::var("SystemDrive").ok()?.to_uppercase());
+        is_drive_letter(&drive).then_some(drive)
+    }
+    #[cfg(not(windows))]
+    None
+}
+
+fn volume_id(letter: &str) -> Option<String> {
+    #[cfg(windows)]
+    {
+        use windows::{
+            Win32::Storage::FileSystem::GetVolumeNameForVolumeMountPointW, core::PCWSTR,
+        };
+        let root: Vec<_> = letter.encode_utf16().chain([0]).collect();
+        let mut name = [0_u16; 64];
+        // SAFETY: entrada terminada em zero e buffer de saída válido.
+        unsafe { GetVolumeNameForVolumeMountPointW(PCWSTR(root.as_ptr()), &mut name).ok()? };
+        Some(String::from_utf16_lossy(
+            &name[..name.iter().position(|&unit| unit == 0)?],
+        ))
     }
     #[cfg(not(windows))]
     {
-        Ok(PathBuf::from("/"))
+        let _ = letter;
+        None
     }
 }
 
@@ -67,7 +152,7 @@ fn from_space(total: u64, available: u64) -> io::Result<DiskInfo> {
     if total == 0 || available > total {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "capacidade do disco inválida",
+            "invalid volume capacity",
         ));
     }
     let used = total - available;
@@ -79,7 +164,7 @@ fn from_space(total: u64, available: u64) -> io::Result<DiskInfo> {
 
 #[cfg(test)]
 mod tests {
-    use super::from_space;
+    use super::*;
 
     #[test]
     fn disco_calcula_espaco_usado_e_rejeita_capacidade_invalida() {
@@ -88,5 +173,7 @@ mod tests {
         assert_eq!(info.used_percent, 75.0);
         assert!(from_space(0, 0).is_err());
         assert!(from_space(100, 101).is_err());
+        assert!(is_drive_letter("D:\\"));
+        assert!(!is_drive_letter("\\\\server\\share"));
     }
 }

@@ -73,6 +73,7 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   border-top: var(--px) solid var(--tone-light);
 }
 #highest { width: 100%; text-align: left; }
+#extra-metrics { display: contents; }
 
 #details { height: 100%; padding: calc(4 * var(--px)); }
 header { display: flex; align-items: center; justify-content: space-between; height: calc(6 * var(--px)); margin-bottom: calc(4 * var(--px)); }

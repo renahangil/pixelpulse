@@ -335,3 +335,23 @@ a pendência de medição do usuário estão em PLANO.md.
 
 - `src-tauri/src/z_order.rs` mantém a ordem da ilha com eventos Win32 e remove os hooks ao encerrar. O recurso de acessibilidade Win32 é uma feature do crate Windows já usado.
 - `src-tauri/icons/pixelpulse.svg` é a arte original. Os PNGs deste diretório são suas versões redimensionadas e o ICO/ICNS guardam o mesmo ícone em formatos de empacotamento.
+
+## Diagnóstico, dispositivos e idiomas
+
+- `src/settings.html` é a entrada da janela central de configuração.
+- `src/settings.ts` preenche o diagnóstico, as unidades, a inicialização e os idiomas.
+- `src/styles/settings.css` aplica a identidade visual à navegação e ao conteúdo em duas colunas.
+- `src/ui/configuration.ts` descreve o inventário e as preferências recebidas do Rust.
+- `src/ui/i18n.ts` seleciona o idioma e resolve os rótulos.
+- `src/ui/locales.json` é o catálogo compartilhado pela interface e pelo menu Rust.
+- `src-tauri/src/settings.rs` mantém o inventário em memória e grava somente idioma e volumes no perfil do usuário.
+- `src-tauri/src/startup.rs` usa StartupTask quando empacotado e o registro por usuário no executável avulso.
+- `src-tauri/packaging/` reúne os arquivos de empacotamento MSIX.
+- `src-tauri/packaging/AppxManifest.xml` declara a aplicação desktop, imagens e tarefa de início desligada.
+- `src-tauri/packaging/build-msix.ps1` valida o PE x64 e chama MakeAppx com a identidade fornecida.
+- `docs/MICROSOFT-STORE.md` orienta sobre instalação, identidade, pacote e cadastro na loja.
+
+Os coletores e vínculos de sistema continuam usando sysinfo, nvml-wrapper e o
+crate windows já licenciado sob Apache-2.0 OR MIT. As novas features do crate
+habilitam DXCore, PDH, caminhos de volume, registro e StartupTask. Não foi
+incluído pacote npm ou crate externo adicional para essas funcionalidades.

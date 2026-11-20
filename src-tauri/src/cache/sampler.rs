@@ -1,5 +1,8 @@
 use super::{AppState, Mode};
-use crate::collectors::{Collector, Snapshot};
+use crate::{
+    collectors::{Collector, Snapshot},
+    settings::Settings,
+};
 use std::{
     io,
     sync::{
@@ -17,12 +20,7 @@ pub(crate) struct Sampler {
 }
 
 impl Sampler {
-    pub fn start(
-        app: AppHandle,
-        state: AppState,
-        changes: Receiver<()>,
-        mut collector: Collector,
-    ) -> io::Result<Self> {
+    pub fn start(app: AppHandle, state: AppState, changes: Receiver<()>) -> io::Result<Self> {
         let window = app.get_webview_window("main").ok_or_else(|| {
             io::Error::new(io::ErrorKind::NotFound, "janela principal não encontrada")
         })?;
@@ -34,6 +32,19 @@ impl Sampler {
         let worker = thread::Builder::new()
             .name("pixelpulse-sampler".to_owned())
             .spawn(move || {
+                let mut collector = match Collector::new() {
+                    Ok(collector) => collector,
+                    Err(error) => {
+                        eprintln!("[inventory] {error}");
+                        return;
+                    }
+                };
+                let settings = app.state::<Settings>();
+                let inventory = collector.inventory();
+                if let Ok(mut slot) = settings.inventory.write() {
+                    *slot = Some(inventory);
+                }
+                let _ = app.emit("inventory-ready", ());
                 let mut previous = None;
                 let mut paused = false;
                 #[cfg(debug_assertions)]
@@ -79,7 +90,9 @@ impl Sampler {
                         paused = false;
                     }
                     let started = Instant::now();
-                    match collector.collect_for_ui() {
+                    let revision = worker_state.revision();
+                    let preferences = settings.preferences();
+                    match collector.collect_for_ui(&preferences.volumes) {
                         Ok(snapshot) => {
                             if let Err(error) = worker_state.store(&snapshot) {
                                 eprintln!("[amostragem] {error}");
@@ -108,7 +121,7 @@ impl Sampler {
                         }
                         Err(error) => eprintln!("[amostragem] falha na coleta: {error}"),
                     }
-                    if !wait_for_next(&worker_state, &changes, started) {
+                    if !wait_for_next(&worker_state, &changes, started, revision) {
                         break;
                     }
                 }
@@ -134,13 +147,18 @@ impl Sampler {
     }
 }
 
-fn wait_for_next(state: &AppState, changes: &Receiver<()>, last_sample: Instant) -> bool {
+fn wait_for_next(
+    state: &AppState,
+    changes: &Receiver<()>,
+    last_sample: Instant,
+    revision: u64,
+) -> bool {
     let mode = state.mode();
     loop {
         if state.is_stopped() {
             return false;
         }
-        if !state.ui_visible() || state.mode() != mode {
+        if !state.ui_visible() || state.mode() != mode || state.revision() != revision {
             return true;
         }
         let remaining = state
@@ -164,7 +182,7 @@ fn wait_for_next(state: &AppState, changes: &Receiver<()>, last_sample: Instant)
 #[derive(Debug, PartialEq, Eq)]
 enum Presentation {
     Collapsed(Option<(usize, u8)>),
-    Expanded([Option<(u8, u8)>; 4]),
+    Expanded([Option<(u8, u8)>; 4], Vec<(String, Option<(u8, u8)>)>),
 }
 
 impl Presentation {
@@ -177,7 +195,7 @@ impl Presentation {
                 .as_ref()
                 .and_then(|gpu| gpu.usage_percent)
                 .map(|value| value as f32),
-            Some(snapshot.disk.used_percent),
+            snapshot.disk.as_ref().map(|disk| disk.used_percent),
         ]
         .map(|value| {
             value
@@ -197,11 +215,25 @@ impl Presentation {
                     })
                     .map(|(index, value)| (index, value.round() as u8)),
             ),
-            Mode::Expanded => Self::Expanded(values.map(|value| {
-                value.map(|value| (value.round() as u8, (value / 100.0 * 16.0).round() as u8))
-            })),
+            Mode::Expanded => Self::Expanded(
+                values.map(|value| value.map(bar)),
+                snapshot
+                    .volumes
+                    .iter()
+                    .map(|volume| {
+                        (
+                            volume.id.clone(),
+                            volume.usage.as_ref().map(|usage| bar(usage.used_percent)),
+                        )
+                    })
+                    .collect(),
+            ),
         }
     }
+}
+
+fn bar(value: f32) -> (u8, u8) {
+    (value.round() as u8, (value / 100.0 * 16.0).round() as u8)
 }
 
 #[cfg(test)]
@@ -216,10 +248,12 @@ mod tests {
             ram_used_mb: 1.0,
             ram_total_mb: 2.0,
             ram_percent: 50.0,
-            disk: DiskInfo {
+            disk: Some(DiskInfo {
                 used_percent: 25.0,
                 used_gb: 1.0,
-            },
+            }),
+            system_volume: Some("C:\\".to_owned()),
+            volumes: Vec::new(),
             gpu: None,
         };
         let collapsed = Presentation::new(&snapshot, Mode::Collapsed);
@@ -230,7 +264,10 @@ mod tests {
         snapshot.cpu_percent = 3.21;
         assert_eq!(
             Presentation::new(&snapshot, Mode::Expanded),
-            Presentation::Expanded([Some((3, 1)), Some((50, 8)), None, Some((25, 4))])
+            Presentation::Expanded(
+                [Some((3, 1)), Some((50, 8)), None, Some((25, 4))],
+                Vec::new()
+            )
         );
         assert_ne!(collapsed, Presentation::new(&snapshot, Mode::Expanded));
 
@@ -247,7 +284,12 @@ mod tests {
     fn ocultar_interrompe_espera_e_parar_acorda_thread() {
         let (state, changes) = AppState::new_with_receiver();
         state.set_ui_visible(false).unwrap();
-        assert!(wait_for_next(&state, &changes, Instant::now()));
+        assert!(wait_for_next(
+            &state,
+            &changes,
+            Instant::now(),
+            state.revision()
+        ));
         assert!(!state.ui_visible());
         assert!(changes.try_recv().is_ok());
         let other = state.clone();

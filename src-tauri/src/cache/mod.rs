@@ -8,7 +8,7 @@ use std::{
     collections::VecDeque,
     sync::{
         Arc, RwLock,
-        atomic::{AtomicBool, AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
         mpsc::{self, Receiver, SyncSender, TrySendError},
     },
     time::Duration,
@@ -44,6 +44,7 @@ pub struct AppState {
     stopped: Arc<AtomicBool>,
     ui_visible: Arc<AtomicBool>,
     wake: SyncSender<()>,
+    revision: Arc<AtomicU64>,
 }
 
 impl AppState {
@@ -60,6 +61,7 @@ impl AppState {
                 stopped: Arc::new(AtomicBool::new(false)),
                 ui_visible: Arc::new(AtomicBool::new(true)),
                 wake,
+                revision: Arc::new(AtomicU64::new(0)),
             },
             receiver,
         )
@@ -117,6 +119,15 @@ impl AppState {
         Ok(())
     }
 
+    pub fn request_sample(&self) {
+        self.revision.fetch_add(1, Ordering::Relaxed);
+        let _ = self.notify();
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision.load(Ordering::Relaxed)
+    }
+
     pub fn ui_visible(&self) -> bool {
         self.ui_visible.load(Ordering::Relaxed)
     }
@@ -147,10 +158,12 @@ mod tests {
                     ram_used_mb: 1.0,
                     ram_total_mb: 2.0,
                     ram_percent: 50.0,
-                    disk: DiskInfo {
+                    disk: Some(DiskInfo {
                         used_percent: 50.0,
                         used_gb: 1.0,
-                    },
+                    }),
+                    system_volume: Some("C:\\".to_owned()),
+                    volumes: Vec::new(),
                     gpu: None,
                 })
                 .unwrap();

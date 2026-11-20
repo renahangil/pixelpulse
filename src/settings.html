@@ -1,0 +1,29 @@
+﻿<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/styles/tokens.css">
+    <link rel="stylesheet" href="/styles/settings.css">
+    <title>PixelPulse</title>
+    <script type="module" src="/settings.ts"></script>
+  </head>
+  <body>
+    <main class="settings">
+      <header class="top"><span class="wordmark">PIXELPULSE</span><button id="close" type="button" aria-label="Close">×</button></header>
+      <div class="layout">
+        <nav aria-label="System Diagnostics">
+          <button type="button" data-section="diagnostics"></button>
+          <button type="button" data-section="devices"></button>
+          <button type="button" data-section="startup"></button>
+          <button type="button" data-section="language"></button>
+        </nav>
+        <section class="content" aria-labelledby="section-title">
+          <h1 id="section-title"></h1>
+          <p id="feedback" role="status" hidden></p>
+          <div id="panel"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

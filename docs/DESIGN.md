@@ -146,3 +146,14 @@ O ícone original combina um pulso azul em degraus com quatro pontos nas cores d
 métricas. A matriz simples mantém o símbolo legível no Explorer. Para regenerar
 os ícones, use npm run tauri icon -- src-tauri/icons/pixelpulse.svg --output
 src-tauri/target/fase6-icons e copie os formatos existentes de desktop.
+
+## Diagnóstico e volumes extras
+
+A tela de configuração tem cantos de 4 px e duas colunas com navegação persistente.
+A área de conteúdo pode rolar. A ilha mantém largura fixa. Cada volume extra
+adicionado ocupa 36 px abaixo das métricas principais. A janela nativa ajusta a
+altura em aproximadamente 155 ms ou imediatamente com movimento reduzido.
+A seleção fica limitada à área útil do monitor para manter a ilha inteira visível.
+O resumo recolhido continua com quatro pontos e mostra o rótulo do volume do
+Windows quando ele for o maior percentual. A navegação de configuração traduz
+rótulos e ações entre inglês americano, português do Brasil e espanhol.

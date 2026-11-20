@@ -1,5 +1,5 @@
 # Plano — PixelPulse
-Versão: 0.10 (2026-11-20)
+Versão: 0.11 (2026-11-20)
 Repositório: github.com/renahangil/pixelpulse
 
 ## Decisões
@@ -21,7 +21,7 @@ Repositório: github.com/renahangil/pixelpulse
 | 4 | Visual pixel art com glass discreto | concluída |
 | 5 | Medição e otimização | implementada; aguardando medição do usuário e inspeção visual nativa |
 | 6 | IA local (Claude Code, Codex) | pendente |
-| 7 | Acabamento (bandeja, autostart, config) | pendente |
+| 7 | Diagnóstico, dispositivos, idiomas e início com o Windows | implementada, com validação adicional de hardware e MSIX pendente |
 | 8 | README e publicação | pendente |
 
 ## Fase 0 — critérios de aceite e validação
@@ -326,12 +326,50 @@ nesse encerramento; 0.9 identifica esta atualização do plano, não uma conclus
 - O ícone usa um pulso em degraus e quatro pixels que remetem ao painel. O SVG mestre gera os ícones de empacotamento, incluindo o recurso ICO do executável. Referências funcionais da pesquisa: [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor/wiki/Main-Window), [Rainmeter](https://www.rainmeter.net/) e [PowerToys](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/overview).
 - Validação: fmt, Clippy sem warnings, oito testes Rust e build release aprovados. No WebView2, troca de vencedor com o mesmo percentual, 100% sem corte, tamanho dos pontos, expansão/recolhimento e GPU N/D aprovados. Uma janela concorrente nativa confirmou recuperação do topo sem troca de foco. A ação Encerrar PixelPulse no menu encerrou o processo com código 0. O ICO foi confirmado no PE x64 nos seis tamanhos de 16 a 256 px. Executável: src-tauri/target/release/pixelpulse.exe, 3.438.592 bytes.
 
+## Fase 7 — diagnóstico e configuração
+
+- Inventário local no início, em segundo plano. A tela central é criada pelo menu
+  nativo e pode ser fechada sem encerrar a ilha.
+- DXCore identifica adaptadores físicos. Se houver uma dedicada identificada, a
+  integrada identificada fica fora da lista. Entre dedicadas, NVML recebe prioridade
+  quando o vínculo é inequívoco. PDH usa o LUID para medir a GPU selecionada quando
+  NVML está indisponível. Em grupos vinculados, a lista mostra a quantidade física
+  quando informada. A leitura representa o adaptador lógico selecionado.
+- O quarto item mostra a letra do volume do Windows. Devices exibe SSD/HDD quando o
+  driver permite classificar pela penalidade de busca, e Unknown quando não informa.
+  Volumes extras recebem medição de espaço e uma linha abaixo das quatro principais.
+  A ilha cresce ou diminui 36 px por linha em cerca de 155 ms, respeita movimento
+  reduzido e limita a seleção à área útil da tela. Nenhuma rolagem na ilha.
+- Falhas de disco são isoladas por volume. Sem leitura, a barra mostra um traço
+  e o estado acessível informa N/A ou N/D.
+- Idiomas en-US (padrão), pt-BR e es traduzem a ilha, as configurações e o menu.
+- Preferências locais em <perfil>/.pixelpulse/settings.json. O inventário permanece
+  em memória. Inicialização começa desligada, com StartupTask em MSIX e Run no
+  registro por usuário no executável avulso.
+- O MSIX de teste usa identidade local. A publicação exige os identificadores do
+  Partner Center e a certificação. Ver [guia da Microsoft Store](MICROSOFT-STORE.md).
+- Validação: fmt, Clippy, oito testes Rust, TypeScript/Vite e release x64.
+  Teste WebView2 no Windows 11 Pro 26100 abriu o diagnóstico pelo menu, identificou
+  a GT 1030 dedicada, C:\ como SSD e D:\ como HDD, alternou os três idiomas e
+  confirmou a memória das preferências. Adicionar/remover D:\ alterou a altura
+  230 → 266 → 230, com leitura real. Startup apareceu desmarcado. Fechar ajustes
+  preservou a ilha, e o segundo item do menu encerrou o processo.
+- Consulta de compatibilidade PDH: a API local retornou instâncias de GPU com LUID.
+  Continuam pendentes testes ponta a ponta com Intel/AMD, sistemas híbridos e
+  GPUs interligadas, além de login e atualização numa instalação MSIX assinada.
+- Medição curta em release com o diagnóstico fechado: 35,91 s, 8 CPUs lógicas.
+  CPU média 0,005% no processo principal e 0,065% no grupo. Memória privada
+  residente 25,51 MB no processo e 95,75 MB no grupo em MB decimais. O principal
+  ficou ligeiramente acima do teto de 25 MB. O pacote de teste foi validado pelo
+  MakeAppx e contém o mesmo executável release, sem assinatura de distribuição..
+
 ## Pendências
 - Glass — decisão da Fase 4: manter acrylic escuro por padrão; a comparação release local não mostrou atraso relevante frente ao RGBA. Se a API falhar, usar automaticamente rgba(20,20,26,0.6), sem desfoque; PIXELPULSE_GLASS=fallback permite forçar esse plano B se houver artefatos ou lentidão na máquina.
 - Fechamento visual: o relato de Acrylic aparentemente opaco orientou a adoção de fundo opaco. Conferir WhatsApp e diferentes DPIs no ambiente de uso. O teste local de sobreposição usou janela concorrente controlada.
 - Fase 5: meta de RAM Rust ainda não aprovada (25,32 MB privados/51,37 MB working set no app otimizado). Medir novamente com coluna/unidade explícitas e comparar ao CLI/NVML (working set médio histórico de 33,94 MB); recomendação de UI nativa se o limite rígido continuar excedido está no relatório acima.
 
 ## Registro de versões
+- 0.11 (2026-11-20): diagnóstico local, GPUs dedicadas com NVML/PDH, volumes extras, idiomas e inicialização. Roteiro MSIX e Partner Center incluído.
 - 0.10 (2026-11-20): fechamento da UI com fundo opaco, identificação da maior métrica, correção de sobreposição por eventos, menu Encerrar PixelPulse e ícone próprio. A fase de IA local permanece no roteiro.
 - 0.9 (2026-11-15): inclui retorno do usuário (WebView 62/68; PixelPulse 24,2/24,4; cantos arredondados e glass não perceptível), com unidade/CPU ainda pendentes. Fase 5 implementada após auditoria/aprovação; pausa oculta, eventos deduplicados, GPU seletiva, logs só em debug e diagnóstico/cantos DWM; release e oito testes aprovados. Aceite permanece pendente de nova medição do usuário e inspeção visual nativa.
 - 0.8 (2026-11-15): Fase 4 concluída; glass com fallback, paleta em três tons, barras de 16 blocos, SVGs pixel, Silkscreen OFL local, resumo recolhido e movimento reduzido; checks/release e validação de DOM aprovados, decisão e limite de inspeção nativa registrados.

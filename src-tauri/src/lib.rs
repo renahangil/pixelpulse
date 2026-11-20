@@ -1,6 +1,8 @@
 mod cache;
 pub mod collectors;
 mod commands;
+mod settings;
+mod startup;
 mod window;
 #[cfg(windows)]
 mod z_order;
@@ -18,25 +20,35 @@ pub fn run() {
             commands::get_snapshot,
             commands::get_glass_mode,
             commands::set_ui_visibility,
-            commands::get_glass_diagnostics
+            commands::get_glass_diagnostics,
+            commands::get_settings,
+            commands::set_language,
+            commands::set_volume,
+            commands::get_startup,
+            commands::set_startup,
+            commands::resize_island,
+            commands::close_settings
         ])
         .on_menu_event(|app, event| {
             if event.id().as_ref() == commands::EXIT_MENU_ID {
                 app.exit(0);
+            } else if event.id().as_ref() == commands::SETTINGS_MENU_ID {
+                let app = app.clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    if let Err(error) = window::open_settings(&app) {
+                        eprintln!("[settings] {error}");
+                    }
+                });
             }
         })
         .setup(|app| {
-            app.manage(commands::context_menu(app.handle())?);
+            app.manage(settings::Settings::new(
+                app.path().home_dir().ok().as_deref(),
+            ));
             let (state, changes) = AppState::new_with_receiver();
-            let collector = collectors::Collector::new()?;
             app.manage(state.clone());
             app.manage(window::initialize(app.handle(), state.clone())?);
-            app.manage(Sampler::start(
-                app.handle().clone(),
-                state,
-                changes,
-                collector,
-            )?);
+            app.manage(Sampler::start(app.handle().clone(), state, changes)?);
             Ok(())
         })
         .build(tauri::generate_context!())
