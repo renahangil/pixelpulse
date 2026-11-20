@@ -6,7 +6,7 @@ Cada `.gitkeep` é vazio e permite ao Git preservar uma pasta ainda sem implemen
 ## Raiz e configuração
 
 - `AGENTS.md`: regras do projeto, da colaboração e da organização em fases.
-- `README.md`: apresentação provisória; a documentação completa fica para a Fase 8.
+- `README.md`: apresentação pública, uso básico, requisitos, compilação e links de distribuição.
 - `LICENSE`: texto da licença GPL-3.0 do projeto.
 - `.gitignore`: exclusões de builds, dependências, logs e arquivos locais do sistema/editor.
 - `package.json`: metadados, dependências e comandos npm da interface e do Tauri.
@@ -340,7 +340,7 @@ a pendência de medição do usuário estão em PLANO.md.
 
 - `src/settings.html` é a entrada da janela central de configuração.
 - `src/settings.ts` preenche o diagnóstico, as unidades, a inicialização e os idiomas.
-- `src/styles/settings.css` aplica a identidade visual à navegação e ao conteúdo em duas colunas.
+- `src/styles/settings.css` usa Silkscreen nos títulos e nomes da navegação, com ícones pixel art e conteúdo em duas colunas.
 - `src/ui/configuration.ts` descreve o inventário e as preferências recebidas do Rust.
 - `src/ui/i18n.ts` seleciona o idioma e resolve os rótulos.
 - `src/ui/locales.json` é o catálogo compartilhado pela interface e pelo menu Rust.
@@ -348,7 +348,7 @@ a pendência de medição do usuário estão em PLANO.md.
 - `src-tauri/src/startup.rs` usa StartupTask quando empacotado e o registro por usuário no executável avulso.
 - `src-tauri/packaging/` reúne os arquivos de empacotamento MSIX.
 - `src-tauri/packaging/AppxManifest.xml` declara a aplicação desktop, imagens e tarefa de início desligada.
-- `src-tauri/packaging/build-msix.ps1` valida o PE x64 e chama MakeAppx com a identidade fornecida.
+- `src-tauri/packaging/build-msix.ps1` valida o PE x64, cria o MSIX com MakeAppx e remove a pasta temporária de empacotamento.
 - `docs/MICROSOFT-STORE.md` orienta sobre instalação, identidade, pacote e cadastro na loja.
 
 Os coletores e vínculos de sistema continuam usando sysinfo, nvml-wrapper e o

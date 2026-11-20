@@ -34,3 +34,14 @@ $RECYCLE.BIN/
 .AppleDouble
 .LSOverride
 ._*
+
+# Credenciais e artefatos de distribuição local
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.exe
+*.msix
+*.msixbundle
+*.msixupload

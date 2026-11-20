@@ -130,7 +130,7 @@ pub fn open_settings(app: &AppHandle) -> tauri::Result<()> {
     let window =
         WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
             .title("PixelPulse")
-            .inner_size(680.0, 500.0)
+            .inner_size(710.0, 520.0)
             .min_inner_size(480.0, 340.0)
             .decorations(false)
             .transparent(true)

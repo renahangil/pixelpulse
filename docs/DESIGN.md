@@ -157,3 +157,9 @@ A seleção fica limitada à área útil do monitor para manter a ilha inteira v
 O resumo recolhido continua com quatro pontos e mostra o rótulo do volume do
 Windows quando ele for o maior percentual. A navegação de configuração traduz
 rótulos e ações entre inglês americano, português do Brasil e espanhol.
+
+No ajuste da Fase 7, a janela de configurações passou para 710 × 520 px lógicos,
+com Silkscreen na navegação e nos títulos. Os ícones de diagnóstico, dispositivos,
+inicialização e idioma são SVGs inline de 6 × 6 pixels de arte exibidos em 18 px.
+Na ilha expandida, o estado de fixação e o atalho usam 10 px, com a mesma posição
+nos três idiomas.

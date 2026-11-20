@@ -9,8 +9,8 @@ mod platform {
             Storage::Packaging::Appx::GetCurrentPackageFullName,
             System::{
                 Registry::{
-                    HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_SZ, RegDeleteKeyValueW, RegGetValueW,
-                    RegSetKeyValueW,
+                    HKEY, HKEY_CURRENT_USER, KEY_QUERY_VALUE, REG_SZ, REG_VALUE_TYPE, RegCloseKey,
+                    RegDeleteKeyValueW, RegOpenKeyExW, RegQueryValueExW, RegSetKeyValueW,
                 },
                 WinRT::{RO_INIT_MULTITHREADED, RoInitialize, RoUninitialize},
             },
@@ -82,18 +82,18 @@ mod platform {
     fn portable(value: Option<bool>) -> Result<bool, String> {
         let run = w!(r"Software\Microsoft\Windows\CurrentVersion\Run");
         let name = w!("PixelPulse");
-        let exe = std::env::current_exe().map_err(|error| error.to_string())?;
-        let command: Vec<u16> = [u16::from(b'"')]
-            .into_iter()
-            .chain(exe.as_os_str().encode_wide())
-            .chain([u16::from(b'"'), 0])
-            .collect();
-
-        // SAFETY: Registry APIs receive valid UTF-16 and sized buffers. Only our
-        // per-user PixelPulse value is read or changed, without elevation.
+        // O valor pertence ao PixelPulse. Consultar sua existência também permite
+        // desligar uma entrada antiga quando o executável avulso mudou de pasta.
+        // SAFETY: o Registro recebe strings NUL-terminated e buffers de tamanho explícito.
         unsafe {
             if let Some(enable) = value {
                 let status = if enable {
+                    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+                    let command: Vec<u16> = [u16::from(b'"')]
+                        .into_iter()
+                        .chain(exe.as_os_str().encode_wide())
+                        .chain([u16::from(b'"'), 0])
+                        .collect();
                     RegSetKeyValueW(
                         HKEY_CURRENT_USER,
                         run,
@@ -109,39 +109,29 @@ mod platform {
                     return Err(status.to_hresult().message());
                 }
             }
-            let mut size = 0;
-            let status = RegGetValueW(
-                HKEY_CURRENT_USER,
-                run,
-                name,
-                RRF_RT_REG_SZ,
-                None,
-                None,
-                Some(&mut size),
-            );
+
+            let mut key = HKEY::default();
+            let status = RegOpenKeyExW(HKEY_CURRENT_USER, run, None, KEY_QUERY_VALUE, &mut key);
             if status == ERROR_FILE_NOT_FOUND {
                 return Ok(false);
             }
             if status != ERROR_SUCCESS {
                 return Err(status.to_hresult().message());
             }
-            if size as usize != command.len() * 2 {
+
+            // RegQueryValueExW lê os metadados do valor sem expandir ou comparar
+            // o caminho. Fechamos o handle mesmo quando a consulta retorna um erro.
+            let mut size = 0;
+            let mut kind = REG_VALUE_TYPE::default();
+            let status = RegQueryValueExW(key, name, None, Some(&mut kind), None, Some(&mut size));
+            let _ = RegCloseKey(key);
+            if status == ERROR_FILE_NOT_FOUND {
                 return Ok(false);
             }
-            let mut actual = vec![0_u16; command.len()];
-            let status = RegGetValueW(
-                HKEY_CURRENT_USER,
-                run,
-                name,
-                RRF_RT_REG_SZ,
-                None,
-                Some(actual.as_mut_ptr().cast()),
-                Some(&mut size),
-            );
             if status != ERROR_SUCCESS {
                 return Err(status.to_hresult().message());
             }
-            Ok(actual == command)
+            Ok(kind == REG_SZ && size > 2)
         }
     }
 }

@@ -10,6 +10,7 @@ const navigation = document.querySelectorAll<HTMLButtonElement>("nav button");
 let section: Section = "diagnostics";
 let config: Configuration | undefined;
 let startup: boolean | null = null;
+let startupRevision = 0;
 let busy = false;
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string): HTMLElementTagNameMap[K] {
@@ -66,7 +67,8 @@ function render(): void {
   document.querySelector("#close")?.setAttribute("aria-label", t("close"));
   for (const button of Array.from(navigation)) {
     const key = button.dataset.section as Section;
-    button.textContent = t(key);
+    const label = button.querySelector("[data-section-label]");
+    if (label) label.textContent = t(key);
     if (key === section) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   }
@@ -177,21 +179,42 @@ async function changePreference(command: string, args: Record<string, unknown>, 
 
 async function readStartup(): Promise<void> {
   if (busy) return;
-  try { startup = await invoke<boolean>("get_startup"); }
-  catch (error) { console.error(error); showError("startupError"); }
+  const revision = ++startupRevision;
+  try {
+    const actual = await invoke<boolean>("get_startup");
+    if (revision !== startupRevision) return;
+    startup = actual;
+  } catch (error) {
+    if (revision !== startupRevision) return;
+    console.error(error);
+    if (section === "startup") showError("startupError");
+  }
   if (section === "startup") render();
 }
 
 async function changeStartup(enabled: boolean): Promise<void> {
   if (busy) return;
+  // A leitura iniciada ao focar a janela pode terminar após o clique.
+  // Invalidá-la evita restaurar o estado antigo no checkbox.
+  startupRevision += 1;
   busy = true;
   showError();
   render();
-  try { startup = await invoke<boolean>("set_startup", { enabled }); }
-  catch (error) { console.error(error); showError("startupError"); }
-  finally {
+  let failed = false;
+  try {
+    startup = await invoke<boolean>("set_startup", { enabled });
+    failed = startup !== enabled;
+  } catch (error) {
+    console.error(error);
+    failed = true;
+  } finally {
     busy = false;
-    await readStartup();
+    if (failed) {
+      if (section === "startup") showError("startupError");
+      await readStartup();
+    } else {
+      render();
+    }
     if (section === "startup") panel.querySelector<HTMLInputElement>("input")?.focus();
   }
 }

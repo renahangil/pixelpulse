@@ -1,16 +1,19 @@
 # Distribuição do PixelPulse pela Microsoft Store
 
-O lançamento da loja usa **MSIX x64** para Windows 11 com WebView2 Runtime. O
-Windows gerencia a instalação e as atualizações em um diretório protegido, em geral
-`C:\Program Files\WindowsApps\<identidade_do_pacote>` no volume do sistema.
-A aplicação lê os arquivos de instalação e grava suas preferências separadamente em
-`<perfil do usuário>\.pixelpulse\settings.json`. Esse arquivo local pode permanecer
-após desinstalação. A inicialização é por usuário e começa desativada. A variante MSIX
-usa `StartupTask`; a variante avulsa registra o próprio caminho no Windows somente
-quando o usuário ativa a opção. No executável avulso, o checkbox representa o
-registro do caminho atual. O Windows ainda pode bloquear a execução pelas opções
-de inicialização ou por uma política. Desative a inicialização da variante avulsa antes de
-habilitar a versão da loja para evitar duas ilhas no login.
+O lançamento da loja usa **MSIX x64** para Windows 11 com WebView2 Runtime.
+O Windows gerencia a instalação e as atualizações. A localização usual é
+`C:\Program Files\WindowsApps\<identidade_do_pacote>` no volume padrão de
+aplicativos escolhido pelo sistema. Para consultar uma instalação, use
+`Get-AppxPackage -Name "<Package/Identity/Name>" | Select-Object InstallLocation`.
+
+As preferências ficam em `<perfil do usuário>\.pixelpulse\settings.json`.
+Esse arquivo pode permanecer após desinstalar. Inicialização é por usuário e
+começa desativada. A variante MSIX usa `StartupTask`. No executável avulso,
+o checkbox acompanha a entrada PixelPulse no Registro. Desmarcar remove a
+entrada, e marcar grava o caminho da cópia em execução. Se mover o executável,
+desmarque e marque novamente. Uma política ou opção de inicialização do Windows
+ainda pode impedir a execução. Desative a inicialização da variante avulsa antes
+de habilitar a versão da loja para evitar duas ilhas no login.
 
 ## 1. Prepare a conta e reserve o produto
 

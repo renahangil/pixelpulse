@@ -348,6 +348,10 @@ nesse encerramento; 0.9 identifica esta atualização do plano, não uma conclus
   registro por usuário no executável avulso.
 - O MSIX de teste usa identidade local. A publicação exige os identificadores do
   Partner Center e a certificação. Ver [guia da Microsoft Store](MICROSOFT-STORE.md).
+- Ajuste na mesma fase: textos auxiliares a 10 px na ilha expandida, Silkscreen
+  e quatro ícones pixel art nas configurações. O checkbox Startup do executável
+  avulso consulta a entrada do Registro, pode desativá-la e ignora respostas
+  assíncronas anteriores ao clique.
 - Validação: fmt, Clippy, oito testes Rust, TypeScript/Vite e release x64.
   Teste WebView2 no Windows 11 Pro 26100 abriu o diagnóstico pelo menu, identificou
   a GT 1030 dedicada, C:\ como SSD e D:\ como HDD, alternou os três idiomas e

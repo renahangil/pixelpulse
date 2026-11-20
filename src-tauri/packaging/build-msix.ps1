@@ -46,21 +46,38 @@ try {
 $output = Join-Path $target 'msix'
 $stage = Join-Path $output ('stage-' + [guid]::NewGuid().ToString('N'))
 $assets = Join-Path $stage 'Assets'
-$null = New-Item -ItemType Directory -Path $assets
-Copy-Item -LiteralPath $executable -Destination $stage
-Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $tauri) 'LICENSE') -Destination $stage
-foreach ($name in 'StoreLogo.png', 'Square150x150Logo.png', 'Square44x44Logo.png') {
-    Copy-Item -LiteralPath (Join-Path $tauri "icons/$name") -Destination $assets
+try {
+    $null = New-Item -ItemType Directory -Path $assets
+    Copy-Item -LiteralPath $executable -Destination $stage
+    Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $tauri) 'LICENSE') -Destination $stage
+    foreach ($name in 'StoreLogo.png', 'Square150x150Logo.png', 'Square44x44Logo.png') {
+        Copy-Item -LiteralPath (Join-Path $tauri "icons/$name") -Destination $assets
+    }
+
+    [xml]$manifest = Get-Content (Join-Path $PSScriptRoot 'AppxManifest.xml') -Raw -Encoding utf8
+    $manifest.Package.Identity.SetAttribute('Name', $IdentityName)
+    $manifest.Package.Identity.SetAttribute('Publisher', $Publisher)
+    $manifest.Package.Identity.SetAttribute('Version', $Version)
+    $manifest.Package.Properties.PublisherDisplayName = $PublisherDisplayName
+    $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
+
+    $package = Join-Path $output "$IdentityName-$Version-x64.msix"
+    & $MakeAppxPath pack /d $stage /p $package /o
+    if ($LASTEXITCODE -ne 0) { throw "MakeAppx falhou: $LASTEXITCODE" }
+    Write-Output $package
+} finally {
+    # Remover apenas os arquivos que o script coloca no diretório temporário.
+    if (Test-Path -LiteralPath $stage -PathType Container) {
+        foreach ($relative in 'pixelpulse.exe', 'LICENSE', 'AppxManifest.xml',
+            'Assets/StoreLogo.png', 'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png') {
+            $file = Join-Path $stage $relative
+            if (Test-Path -LiteralPath $file -PathType Leaf) {
+                Remove-Item -LiteralPath $file -Force
+            }
+        }
+        if (Test-Path -LiteralPath $assets -PathType Container) {
+            [IO.Directory]::Delete($assets, $false)
+        }
+        [IO.Directory]::Delete($stage, $false)
+    }
 }
-
-[xml]$manifest = Get-Content (Join-Path $PSScriptRoot 'AppxManifest.xml') -Raw -Encoding utf8
-$manifest.Package.Identity.SetAttribute('Name', $IdentityName)
-$manifest.Package.Identity.SetAttribute('Publisher', $Publisher)
-$manifest.Package.Identity.SetAttribute('Version', $Version)
-$manifest.Package.Properties.PublisherDisplayName = $PublisherDisplayName
-$manifest.Save((Join-Path $stage 'AppxManifest.xml'))
-
-$package = Join-Path $output "$IdentityName-$Version-x64.msix"
-& $MakeAppxPath pack /d $stage /p $package /o
-if ($LASTEXITCODE -ne 0) { throw "MakeAppx falhou: $LASTEXITCODE" }
-Write-Output $package
