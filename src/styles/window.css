@@ -46,11 +46,12 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 
 #summary {
   display: grid;
-  grid-template-columns: calc(18 * var(--px)) calc(31 * var(--px));
+  /* Quatro células de 9 px com três espaços de 3 px. */
+  grid-template-columns: calc(15 * var(--px)) calc(24 * var(--px));
+  justify-content: center;
   column-gap: calc(3 * var(--px));
   align-items: center;
   height: 100%;
-  padding-left: calc(8 * var(--px));
 }
 
 .dots {
@@ -71,7 +72,7 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   opacity: 1;
   border-top: var(--px) solid var(--tone-light);
 }
-#highest { width: calc(31 * var(--px)); font-size: 12px; line-height: 18px; white-space: nowrap; }
+#highest { width: 100%; text-align: left; }
 
 #details { height: 100%; padding: calc(4 * var(--px)); }
 header { display: flex; align-items: center; justify-content: space-between; height: calc(6 * var(--px)); margin-bottom: calc(4 * var(--px)); }

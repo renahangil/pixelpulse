@@ -138,8 +138,9 @@ Referências nativas da Fase 5:
 A ilha usa fundo opaco #25252d e preserva a grade e os cantos de 4 px. Os efeitos
 Acrylic e RGBA são opções de diagnóstico. Na ilha recolhida, cada ponto tem uma
 célula fixa de 9 px. O vencedor ocupa os 9 px e recebe uma borda superior clara.
-Os demais pontos têm 6 px. O rótulo da métrica acompanha o percentual com largura
-reservada. No empate exato, a ordem é CPU, RAM, GPU e SSD.
+Os demais pontos têm 6 px. O rótulo da métrica acompanha o percentual em uma coluna de 72 px, alinhada
+à esquerda. As duas colunas ficam centralizadas na ilha recolhida, com 9 px
+entre os pontos e o rótulo. No empate exato, a ordem é CPU, RAM, GPU e SSD.
 
 O ícone original combina um pulso azul em degraus com quatro pontos nas cores das
 métricas. A matriz simples mantém o símbolo legível no Explorer. Para regenerar
