@@ -45,3 +45,51 @@ jobs:
         run: cargo test --locked
       - name: Build Windows release
         run: npm run tauri build -- --no-bundle
+
+  tag-release:
+    name: Create release tag
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !github.event.deleted
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: '1.0.0.0'
+    steps:
+      - name: Tag the verified main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="repos/$GITHUB_REPOSITORY"
+          tag_ref="refs/tags/$RELEASE_TAG"
+
+          existing_tag() {
+            gh api "$repository/git/matching-refs/tags/$RELEASE_TAG" \
+              --jq ".[] | select(.ref == \"$tag_ref\") | .object.sha"
+          }
+
+          current_tag="$(existing_tag)"
+          if [[ -n "$current_tag" ]]; then
+            echo "$tag_ref already points to $current_tag."
+            exit 0
+          fi
+
+          main_sha="$(gh api "$repository/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$main_sha" != "$GITHUB_SHA" ]]; then
+            echo "main advanced while the checks were running."
+            exit 0
+          fi
+
+          if gh api --method POST "$repository/git/refs" -f ref="$tag_ref" -f sha="$GITHUB_SHA" --silent; then
+            echo "Created $tag_ref at $GITHUB_SHA."
+            exit 0
+          fi
+
+          # A concurrent attempt can create the tag between the read and the write.
+          current_tag="$(existing_tag)"
+          if [[ -z "$current_tag" ]]; then
+            exit 1
+          fi
+          echo "$tag_ref already points to $current_tag."

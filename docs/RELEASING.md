@@ -36,22 +36,22 @@ gh pr checks $prNumber --repo renahangil/pixelpulse
 
 [GitHub release visibility](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility) · [Private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository)
 
-## 4. Tag and publish 1.0.0
+## 4. Publish the 1.0.0.0 release
 
-Use a clean checkout. Fast-forward your local `main` to the approved remote revision. If local `main` has diverged, create a fresh clone for release rather than overwriting local history. Confirm `git rev-parse HEAD` matches the green **Actions** run before tagging.
+After the PR merges, the CI workflow creates `1.0.0.0` on the tested `main` commit once **Windows checks** succeeds. The **Create release tag** job is only eligible on pushes to `main` and leaves any existing tag in place. Check the job outcome and verify the tag points to the intended green commit. If tag creation is restricted, review the applicable ruleset before retrying the job.
+
+Build from the tag in a clean checkout. `git rev-parse HEAD` should report the same SHA as the green run.
 
 ```powershell
-git switch main
-git pull --ff-only origin main
+git fetch origin tag 1.0.0.0
+git switch --detach 1.0.0.0
 git status --porcelain
 git rev-parse HEAD
 npm ci
 npm run tauri build -- --no-bundle
 Get-FileHash -Algorithm SHA256 .\src-tauri\target\release\pixelpulse.exe
-git tag -a v1.0.0 -m "PixelPulse 1.0.0"
-git push origin refs/tags/v1.0.0
 ```
 
-In **Releases → Draft a new release**, select tag `v1.0.0` and use the title **PixelPulse 1.0.0**. Summarize island controls, metrics, diagnostics, languages and startup. State Windows 11 x64 and WebView2 requirements, note platform-dependent GPU sensors, and identify the supported distribution channel. If you attach a standalone executable, use the tested x64 artifact from that revision and include its SHA-256. Ensure the matching GPL-3.0 source, instructions and notices are available. Preview the release while editing and verify downloads after publication.
+In **Releases → Draft a new release**, select tag `1.0.0.0` and use the title **PixelPulse 1.0.0.0**. Summarize island controls, metrics, diagnostics, languages and startup. State Windows 11 x64 and WebView2 requirements, note platform-dependent GPU sensors, and identify the supported distribution channel. If you attach a standalone executable, use the tested x64 artifact from that revision and include its SHA-256. Ensure the matching GPL-3.0 source, instructions and notices are available. Preview the release while editing and verify downloads after publication.
 
-For the Store, build with the registered package identity and follow the separate Partner Center checklist. Keep the upload package, hash, source revision and certification report. Link the Store listing only after it is live. [Managing GitHub releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+For the Store, build with the registered package identity and follow the separate Partner Center checklist. Keep the upload package, hash, source revision and certification report. Verify that the Store listing is publicly available before announcing Microsoft Store downloads. [Managing GitHub releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
