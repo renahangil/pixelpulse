@@ -1,27 +1,41 @@
+<p align="center">
+  <img src="docs/img/pixelpulse-banner.svg" alt="PixelPulse — pixel-art system monitor for Windows" width="960">
+</p>
+
 # PixelPulse
 
-Monitor local de CPU, RAM, GPU e armazenamento para Windows 11. As métricas
-aparecem em uma ilha flutuante com visual pixel art.
+PixelPulse is a lightweight Windows system monitor that keeps CPU, memory, graphics and storage within reach in a floating pixel-art island.
 
-- Passe o ponteiro sobre a ilha para expandir. Clique para fixar e use **ESC**
-  para liberar.
-- No menu de contexto, abra **System Diagnostics** para consultar o hardware,
-  escolher volumes adicionais, configurar o início com o Windows ou mudar o idioma.
-- As preferências ficam em `%USERPROFILE%\.pixelpulse\settings.json`. O aplicativo
-  consulta as métricas localmente.
+- See the busiest metric at a glance. Hover to expand, click to pin and press **ESC** to unpin.
+- Right-click the island to open **System Diagnostics**. Inspect your hardware, add local drives, opt in to launch at Windows sign-in, or switch between English (US), Brazilian Portuguese and Spanish.
+- Metrics stay on your PC. User preferences live in `%USERPROFILE%\.pixelpulse\settings.json`.
 
-## Compilar no Windows
+## Build on Windows for local testing
 
-Use Windows 11 x64 com WebView2, Node.js, Rust estável e as ferramentas C++ exigidas
-pelo [Tauri](https://v2.tauri.app/start/prerequisites/).
+Use an up-to-date **Windows 11 x64** installation with WebView2, Node.js 24 LTS, stable Rust with the MSVC toolchain, and the Visual Studio C++ build tools. [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#windows)
 
-```powershell
-npm ci
-npm run tauri build -- --no-bundle
-```
+1. From the repository root, install the pinned frontend dependencies.
 
-O executável fica em `src-tauri/target/release/pixelpulse.exe`.
-Veja o [guia da Microsoft Store](docs/MICROSOFT-STORE.md) para gerar e validar o MSIX,
-e o [mapa do projeto](docs/ESTRUTURA.md) para localizar os módulos.
+   ```powershell
+   npm ci
+   ```
 
-Código sob [GPL-3.0](LICENSE). A fonte Silkscreen usa [OFL 1.1](src/assets/fonts/OFL.txt).
+2. Build the standalone release executable.
+
+   ```powershell
+   npm run tauri build -- --no-bundle
+   ```
+
+3. Run the executable for local testing.
+
+   ```powershell
+   .\src-tauri\target\release\pixelpulse.exe
+   ```
+
+## Project documentation
+
+[Design](docs/DESIGN.md) · [Repository map](docs/ESTRUTURA.md) · [Roadmap](docs/PLANO.md) · [Release checklist](docs/RELEASING.md)
+
+## Licenses
+
+PixelPulse is licensed under [GPL-3.0](LICENSE). The bundled Silkscreen font is licensed under the [SIL Open Font License 1.1](src/assets/fonts/OFL.txt).

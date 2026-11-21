@@ -28,13 +28,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 #close:hover { background: #50343a; }
 .layout { display: grid; grid-template-columns: minmax(156px, 26%) minmax(0, 1fr); min-height: 0; }
 nav { display: flex; flex-direction: column; gap: 6px; padding: 14px 9px; background: #202028; border-right: 1px solid var(--edge); }
-nav button { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 9px; font-size: 11px; line-height: 1.35; text-align: start; min-height: 36px; padding: 6px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; }
+nav button { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 9px; font-size: 13px; line-height: 1.35; text-align: start; min-height: 36px; padding: 6px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; cursor: pointer; }
 nav svg { width: 18px; height: 18px; fill: var(--text-secondary); shape-rendering: crispEdges; }
 nav button[aria-current="page"] svg { fill: var(--cpu-light); }
 nav button:hover { background: #2c2e38; }
 nav button[aria-current="page"] { border-color: #414e5b; box-shadow: inset 3px 0 var(--cpu-base); background: #2d3440; }
 .content { min-width: 0; overflow: auto; scrollbar-color: #535365 #25252d; padding: 18px 18px 24px; }
-h1 { margin: 0 0 15px; font-size: 15px; line-height: 1.4; }
+h1 { margin: 0 0 15px; font-size: 18px; line-height: 1.4; }
 h2 { margin: 17px 0 7px; font-size: 11px; color: var(--cpu-light); }
 p { margin: 0 0 12px; }
 .note { color: #aaaab7; }

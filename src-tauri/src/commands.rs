@@ -14,7 +14,7 @@ pub fn set_mode(
 ) -> Result<(), String> {
     island_only(&window)?;
     let previous = state.mode();
-    // Só anunciamos o novo ritmo depois de ajustar a janela de verdade.
+    // Switch the sampling interval after the window has accepted its new size.
     window::apply_mode(&window, mode).map_err(|error| error.to_string())?;
     if let Err(error) = state.set_mode(mode) {
         if let Err(rollback) = window::apply_mode(&window, previous) {
@@ -35,7 +35,7 @@ pub fn get_glass_mode(state: State<'_, window::GlassMode>) -> window::GlassMode 
     *state.inner()
 }
 
-/// Visibilidade do documento complementa is_visible/is_minimized da janela nativa.
+/// Document visibility complements the native window's visibility and minimized state.
 #[tauri::command]
 pub fn set_ui_visibility(
     visible: bool,

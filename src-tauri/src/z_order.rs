@@ -20,7 +20,7 @@ thread_local! {
 }
 
 pub fn raise(hwnd: HWND) -> windows::core::Result<()> {
-    // SAFETY: HWND da ilha. Preserva tamanho, posição e a janela que tem o teclado.
+    // SAFETY: This is the island HWND. Preserve its geometry and the active window.
     unsafe {
         SetWindowPos(
             hwnd,
@@ -35,14 +35,14 @@ pub fn raise(hwnd: HWND) -> windows::core::Result<()> {
 }
 
 pub fn watch(hwnd: HWND) -> windows::core::Result<()> {
-    // OUTOFCONTEXT entrega os eventos na thread que registra o hook, o loop da UI.
+    // OUTOFCONTEXT delivers events on the registering thread, which runs the UI loop.
     ISLAND.set(hwnd);
     for event in [
         EVENT_SYSTEM_FOREGROUND,
         EVENT_OBJECT_SHOW,
         EVENT_OBJECT_REORDER,
     ] {
-        // SAFETY: callback estático, sem DLL ou injeção em outro processo.
+        // SAFETY: The callback is static and does not inject code into other processes.
         let hook = unsafe {
             SetWinEventHook(
                 event,
@@ -68,7 +68,7 @@ pub fn unwatch() {
     ISLAND.set(HWND(std::ptr::null_mut()));
     HOOKS.with_borrow_mut(|hooks| {
         for hook in hooks.drain(..) {
-            // SAFETY: cada hook é liberado na mesma thread que o registrou.
+            // SAFETY: Release each hook on the thread that registered it.
             let _ = unsafe { UnhookWinEvent(hook) };
         }
     });
@@ -87,14 +87,14 @@ unsafe extern "system" fn on_window_event(
     if island.0.is_null() || event_window.0.is_null() || child != 0 {
         return;
     }
-    // SAFETY: as consultas Win32 validam os handles. Os buffers RECT são locais.
+    // SAFETY: Win32 validates the handles. RECT buffers are local.
     let covered = unsafe {
         if !IsWindowVisible(island).as_bool() || IsIconic(island).as_bool() {
             return;
         }
 
-        // REORDER pode nomear a janela-pai. Não presumimos que seu HWND seja o
-        // da janela que ficou acima. Ignoramos notificações internas de controles.
+        // REORDER can report a parent window instead of the one that moved above the island.
+        // Ignore notifications from child controls.
         if event_window != GetDesktopWindow()
             && (object != OBJID_WINDOW.0 || GetAncestor(event_window, GA_ROOT) != event_window)
         {
@@ -113,7 +113,7 @@ fn has_overlap_above(island: HWND, only: Option<HWND>) -> bool {
     let mut rect = RECT::default();
     let mut current = island;
     let mut process = 0;
-    // SAFETY: apenas consultas de posição, visibilidade e identidade da janela.
+    // SAFETY: Only query window geometry, visibility and identity.
     unsafe {
         if GetWindowRect(island, &mut rect).is_err() {
             return false;
@@ -137,7 +137,7 @@ fn has_overlap_above(island: HWND, only: Option<HWND>) -> bool {
             let mut other_rect = RECT::default();
             let mut other_process = 0;
             GetWindowThreadProcessId(current, Some(&mut other_process));
-            // Preservar o menu nativo e os pop-ups do próprio PixelPulse.
+            // Keep PixelPulse's native menu and popups above its own island.
             if other_process != process
                 && GetWindowRect(current, &mut other_rect).is_ok()
                 && intersects(rect, other_rect)

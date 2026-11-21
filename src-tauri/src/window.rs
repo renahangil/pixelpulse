@@ -1,4 +1,4 @@
-//! Geometria nativa da ilha: não sobra uma área transparente interceptando cliques.
+//! Native window bounds keep the island's click area the same size as its content.
 
 use crate::{
     cache::{AppState, Mode},
@@ -29,8 +29,8 @@ fn configure_glass(window: &WebviewWindow) -> GlassMode {
         _ => return GlassMode::Opaque,
     };
     if prefer_acrylic {
-        // No Windows 11 recente, o crate usa Desktop Acrylic e ignora esta tinta.
-        // A tupla só colore o caminho legado; a superfície CSS escurece ambos.
+        // On recent Windows 11 builds, the crate requests Desktop Acrylic and ignores the tint.
+        // The tuple applies to the legacy path. The CSS surface darkens both.
         match window_vibrancy::apply_acrylic(window, Some((20, 20, 26, 72))) {
             Ok(()) => {
                 eprintln!("[glass] acrylic");
@@ -56,7 +56,7 @@ fn geometry(
         Mode::Collapsed => LogicalSize::new(180.0, 36.0),
         Mode::Expanded => LogicalSize::new(340.0, f64::from(EXPANDED_HEIGHT)),
     };
-    // Monitor usa pixels físicos; converter a janela evita misturar unidades no DPI.
+    // Monitors report physical pixels. Convert logical window dimensions using the monitor DPI.
     let size: PhysicalSize<u32> = logical.to_physical(scale);
     let x = origin.x + ((monitor.width as i64 - size.width as i64) / 2) as i32;
     let y = origin.y + (TOP_MARGIN * scale).round() as i32;
@@ -81,7 +81,7 @@ pub fn apply_mode(window: &WebviewWindow, mode: Mode) -> Result<(), Box<dyn std:
         let height = EXPANDED_HEIGHT + rows as u32 * EXTRA_ROW_HEIGHT;
         size.height = (f64::from(height) * monitor.scale_factor()).round() as u32;
     }
-    // Posicionar primeiro permite ao Windows ajustar o monitor/DPI antes do tamanho.
+    // Position first so Windows can update the monitor and DPI before resizing.
     if window.outer_position()? != position {
         window.set_position(position)?;
     }
@@ -167,14 +167,14 @@ pub fn initialize(
     let dpi_window = window.clone();
     window.on_window_event(move |event| {
         if matches!(event, WindowEvent::ScaleFactorChanged { .. }) {
-            // Sem polling: mudanças de escala também refazem a centralização.
+            // Recenter in response to scale changes without polling.
             if let Err(error) = apply_mode(&dpi_window, state.mode()) {
                 eprintln!("[janela] falha ao ajustar DPI: {error}");
             }
         }
     });
-    // focus=false mantém a exibição sem ativação no Windows; não chamamos set_focus.
-    // Mostrar só após posicionar evita um flash da janela em uma posição provisória.
+    // The window's focus setting lets it appear without taking keyboard focus.
+    // Position before showing to avoid a flash at the default location.
     let glass = configure_glass(&window);
     if let Err(error) = request_small_corners(&window) {
         eprintln!("[glass] cantos nativos indisponíveis: {error}");
@@ -196,7 +196,7 @@ pub fn initialize(
     Ok(glass)
 }
 
-/// Consulta apenas a nossa janela; atributo aceito não comprova ausência de artefatos.
+/// Read attributes on this window only. An accepted attribute cannot confirm visual quality.
 #[derive(Debug, serde::Serialize)]
 pub struct GlassDiagnostics {
     pub backdrop_type: Option<i32>,
@@ -211,8 +211,8 @@ fn request_small_corners(window: &WebviewWindow) -> Result<(), Box<dyn std::erro
         Graphics::Dwm::{DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUNDSMALL, DwmSetWindowAttribute},
     };
     let hwnd = HWND(window.hwnd()?.0);
-    // Preferência oficial: o DWM decide o raio físico. CSS mantém seus 4 px lógicos.
-    // SAFETY: HWND válido da janela viva; ponteiro e tamanho correspondem ao enum i32.
+    // DWM chooses the physical radius. CSS keeps its 4 logical pixel radius.
+    // SAFETY: The window handle is valid, and the pointer and size describe an i32 enum.
     unsafe {
         DwmSetWindowAttribute(
             hwnd,
@@ -253,7 +253,7 @@ pub fn glass_diagnostics(window: &WebviewWindow) -> GlassDiagnostics {
                     ),
                 ] {
                     let mut value = 0_i32;
-                    // SAFETY: os dois atributos retornam enums de 32 bits; HWND vivo e buffer válido.
+                    // SAFETY: Both attributes return 32-bit enums through a valid buffer for a live HWND.
                     let result = unsafe {
                         DwmGetWindowAttribute(
                             HWND(handle.0),

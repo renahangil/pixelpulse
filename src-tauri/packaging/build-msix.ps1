@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9.-]{3,50}$')][string]$IdentityName,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Publisher,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
-    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+\.0$')][string]$Version = '0.2.0.0',
+    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+\.0$')][string]$Version = '1.0.0.0',
     [string]$MakeAppxPath
 )
 
@@ -33,7 +33,7 @@ if (-not $MakeAppxPath) {
     $MakeAppxPath = Join-Path $sdk.FullName 'x64/makeappx.exe'
 }
 
-# O pacote declara x64. Verificar o cabeçalho PE evita empacotar outro alvo por engano.
+# Verify the PE header to avoid shipping a binary that disagrees with the x64 manifest.
 $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($executable))
 try {
     $reader.BaseStream.Position = 0x3c
@@ -66,7 +66,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "MakeAppx falhou: $LASTEXITCODE" }
     Write-Output $package
 } finally {
-    # Remover apenas os arquivos que o script coloca no diretório temporário.
+    # Remove only the files this script stages for packaging.
     if (Test-Path -LiteralPath $stage -PathType Container) {
         foreach ($relative in 'pixelpulse.exe', 'LICENSE', 'AppxManifest.xml',
             'Assets/StoreLogo.png', 'Assets/Square150x150Logo.png', 'Assets/Square44x44Logo.png') {

@@ -84,7 +84,7 @@ impl DiskCollector {
             if !volume.system && !selected.contains(&volume.id) {
                 continue;
             }
-            // Cada volume pode desaparecer ou falhar sem invalidar CPU, RAM ou os demais.
+            // A volume can disappear or fail without invalidating CPU, RAM or other volume readings.
             let usage = disk
                 .refresh_specifics(DiskRefreshKind::nothing().with_storage())
                 .then(|| from_space(disk.total_space(), disk.available_space()).ok())
@@ -112,7 +112,7 @@ fn system_letter() -> Option<String> {
     {
         use windows::Win32::System::SystemInformation::GetWindowsDirectoryW;
         let mut buffer = [0_u16; 260];
-        // SAFETY: buffer válido e limitado. Só precisamos dos três caracteres da raiz.
+        // SAFETY: The bounded buffer is valid. The drive root takes three characters.
         let len = unsafe { GetWindowsDirectoryW(Some(&mut buffer)) } as usize;
         if (3..buffer.len()).contains(&len) {
             let drive = String::from_utf16_lossy(&buffer[..3]).to_uppercase();
@@ -135,7 +135,7 @@ fn volume_id(letter: &str) -> Option<String> {
         };
         let root: Vec<_> = letter.encode_utf16().chain([0]).collect();
         let mut name = [0_u16; 64];
-        // SAFETY: entrada terminada em zero e buffer de saída válido.
+        // SAFETY: Input is NUL-terminated and the output buffer is valid.
         unsafe { GetVolumeNameForVolumeMountPointW(PCWSTR(root.as_ptr()), &mut name).ok()? };
         Some(String::from_utf16_lossy(
             &name[..name.iter().position(|&unit| unit == 0)?],

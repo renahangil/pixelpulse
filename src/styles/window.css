@@ -37,7 +37,7 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Uma largura fixa reserva o espaço de 100%, inclusive quando o valor é um traço. */
+/* Fixed widths keep the columns stable at 100% and when the value is missing. */
 .pixel-number { display: inline-block; width: calc(14 * var(--px)); text-align: right; white-space: nowrap; }
 .metric-cpu { --tone-light: var(--cpu-light); --tone-base: var(--cpu-base); --tone-dark: var(--cpu-dark); }
 .metric-ram { --tone-light: var(--ram-light); --tone-base: var(--ram-base); --tone-dark: var(--ram-dark); }
@@ -46,7 +46,7 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 
 #summary {
   display: grid;
-  /* Quatro células de 9 px com três espaços de 3 px. */
+  /* Four 9 px cells with three 3 px gaps. */
   grid-template-columns: calc(15 * var(--px)) calc(24 * var(--px));
   justify-content: center;
   column-gap: calc(3 * var(--px));
@@ -93,11 +93,11 @@ header { display: flex; align-items: center; justify-content: space-between; hei
   position: relative;
   flex: 0 0 calc(3 * var(--px));
   height: 100%;
-  /* O xadrez é só CSS: células de 3 px e dois tons quase iguais. */
+  /* Build the checkerboard from 3 px CSS cells in two closely matched tones. */
   background: conic-gradient(var(--track-a) 25%, var(--track-b) 0 50%, var(--track-a) 0 75%, var(--track-b) 0) 0 0 / calc(2 * var(--px)) calc(2 * var(--px));
 }
 
-/* Linhas de um pixel de arte; não usamos sombras externas ou glow. */
+/* Shade each block with one art pixel at the top and bottom. */
 .block::before, .block::after { content: ""; position: absolute; left: 0; right: 0; height: var(--px); }
 .block::before { top: 0; background: var(--track-top); }
 .block::after { bottom: 0; background: var(--track-bottom); }
@@ -105,12 +105,12 @@ header { display: flex; align-items: center; justify-content: space-between; hei
 .block.is-lit::before { background: var(--tone-light); }
 .block.is-lit::after { background: var(--tone-dark); }
 
-footer { margin-top: calc(4 * var(--px)); color: var(--text-secondary); }
+footer { margin-top: calc(6 * var(--px)); color: var(--text-secondary); }
 footer p { margin: 0; font: inherit; }
 #hint { font-size: 10px; line-height: 15px; }
 #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
-/* A janela muda de tamanho no Rust; só o conteúdo faz uma entrada curta em passos. */
+/* Rust resizes the window. The content enters in short, discrete steps. */
 #island[data-mode="Expanded"] #details { animation: reveal 120ms steps(3, end) both; }
 @keyframes reveal { from { opacity: 0; transform: translateY(calc(-1 * var(--px))); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { #island[data-mode="Expanded"] #details { animation: none; } }

@@ -47,14 +47,14 @@ class SegmentedBar {
       block.setAttribute("aria-hidden", "true");
       return block;
     });
-    // Alocamos os 16 elementos uma vez, não em cada evento de métricas.
+    // Allocate the 16 elements once and reuse them across samples.
     element.append(...this.blocks);
     setAttribute(element, "aria-valuetext", t("na"));
   }
 
   update(value: number | null): void {
     const next = value === null ? 0 : Math.round(value / 100 * BLOCK_COUNT);
-    // Só atravessamos a diferença: de 8 para 10 acende apenas os blocos 8 e 9.
+    // Update the difference only. Going from 8 to 10 lights blocks at indices 8 and 9.
     for (let index = Math.min(this.lit, next); index < Math.max(this.lit, next); index++) {
       this.blocks[index].classList.toggle("is-lit", index < next);
     }
@@ -131,7 +131,7 @@ export function renderMetrics(snapshot: Snapshot, expanded: boolean): void {
     }
     METRICS.forEach((name, index) => bars.get(name)?.update(values[index]));
   } else {
-    // GPU indisponível não vira 0%; ela simplesmente não participa do máximo.
+    // Exclude unavailable GPU usage from the maximum so an unknown value stays distinct from zero.
     let winner = -1;
     let maximum = -1;
     values.forEach((value, index) => {

@@ -55,7 +55,7 @@ pub fn run() {
         .expect("erro ao executar o PixelPulse")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
-                // Acorda a espera e aguarda a thread antes de desmontar o aplicativo.
+                // Wake the sampler and join its thread before tearing down the app.
                 #[cfg(windows)]
                 z_order::unwatch();
                 app.state::<Sampler>().shutdown();

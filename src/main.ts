@@ -4,7 +4,7 @@ import { renderMetrics, syncVolumeRows, type Snapshot } from "./ui/metrics";
 import { t, useLanguage } from "./ui/i18n";
 import type { Configuration, Preferences } from "./ui/configuration";
 
-// Mude para "click-only" para desativar hover; tempos em milissegundos.
+// Use "click-only" to disable hover. All delays are in milliseconds.
 const INTERACTION_MODE = "hover-click" as "hover-click" | "click-only";
 const EXPAND_DELAY_MS = 200;
 const COLLAPSE_DELAY_MS = 400;
@@ -12,7 +12,7 @@ const COLLAPSE_DELAY_MS = 400;
 type Mode = "Collapsed" | "Expanded";
 
 
-// Leva a licença junto no bundle, inclusive ao distribuir somente o executável.
+// Include the font license in the bundle so it ships with the standalone executable.
 const fontLicense = document.createElement("link");
 fontLicense.rel = "license";
 fontLicense.href = new URL("./assets/fonts/OFL.txt", import.meta.url).href;
@@ -60,13 +60,13 @@ async function syncMode(): Promise<void> {
   if (syncing || !ready || disposed) return;
   syncing = true;
   try {
-    // Um comando por vez: uma resposta lenta de expandir não desfaz um recolher posterior.
+    // Serialize mode requests so a late expand response cannot undo a collapse.
     while (!disposed && appliedMode !== desiredMode) {
       const next = desiredMode;
       resizeRevision += 1;
       await invoke("set_mode", { mode: next });
       appliedMode = next;
-      // O resumo pode ter suprimido eventos: ler o cache ao abrir as quatro linhas.
+      // Read the cache on expansion because the summary may have suppressed some events.
       await readLatest();
       renderInteraction();
     }
@@ -161,7 +161,7 @@ async function start(): Promise<void> {
     await readConfiguration();
     const glass = await invoke<"acrylic" | "fallback" | "opaque">("get_glass_mode");
     document.documentElement.dataset.glass = glass;
-    // Também sincroniza uma eventual recarga da UI com o tamanho inicial da ilha.
+    // Match the initial native window size after a webview reload.
     await invoke("set_mode", { mode: "Collapsed" });
     await syncVisibility();
     ready = true;
@@ -214,7 +214,7 @@ async function animateHeight(target: number): Promise<void> {
 async function readLatest(): Promise<void> {
   const revision = eventRevision;
   const cached = await invoke<Snapshot | null>("get_snapshot");
-  // Uma resposta do cache não pode sobrescrever um evento mais novo.
+  // Ignore a cached response if a newer event has already rendered.
   if (revision === eventRevision) latest = cached;
   render();
 }
@@ -222,7 +222,7 @@ async function readLatest(): Promise<void> {
 let visibilitySync: Promise<void> = Promise.resolve();
 function syncVisibility(): Promise<void> {
   const visible = !document.hidden;
-  // Serializar impede que uma resposta lenta de ocultar vença uma restauração.
+  // Serialize visibility updates so a late hide response cannot undo restoration.
   visibilitySync = visibilitySync.catch(() => {}).then(async () => {
     await invoke("set_ui_visibility", { visible });
     if (visible && !disposed) await readLatest();

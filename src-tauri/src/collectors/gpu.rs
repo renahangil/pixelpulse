@@ -73,7 +73,7 @@ impl GpuCollector {
                             .pci_sub_system_id
                             .is_none_or(|id| id == hardware.subSysID)
                 };
-                // Em placas idênticas, não atribuir índices por coincidência. PDH usa o LUID.
+                // Identical adapters can have unrelated indices. PDH identifies them by LUID.
                 let peers = nvidia
                     .iter()
                     .filter(|(_, _, pci)| pci.as_ref().is_some_and(same_card));
@@ -86,7 +86,7 @@ impl GpuCollector {
             }
             #[cfg(windows)]
             {
-                // Um match ambíguo em ambas as direções usa apenas o contador do Windows.
+                // Use the Windows counter when the match is ambiguous in either direction.
                 let indexes: Vec<_> = adapters.iter().filter_map(|a| a.nvml_index).collect();
                 for adapter in &mut adapters {
                     if let Some(index) = adapter.nvml_index
@@ -125,7 +125,7 @@ impl GpuCollector {
         {
             adapters.retain(|adapter| adapter.info.integrated != Some(true));
         }
-        // Priorizar a dedicada conhecida. Depois, preferir leitura NVML identificada.
+        // Prefer a known discrete adapter, then an unambiguous NVML match.
         adapters.sort_by_key(|adapter| {
             (
                 adapter.info.integrated != Some(false),
@@ -181,14 +181,14 @@ impl GpuCollector {
     }
 }
 
-// Esta propriedade foi documentada depois dos metadados do SDK usados pelo crate.
+// Microsoft documented this property after the SDK metadata used by these bindings.
 #[cfg(windows)]
 const PHYSICAL_ADAPTER_COUNT: Property = Property(15);
 
 #[cfg(windows)]
 fn windows_adapters() -> Vec<Adapter> {
-    // SAFETY: DXCore retorna interfaces COM gerenciadas pelos bindings. Cada consulta
-    // abaixo passa o tipo documentado para a propriedade e um buffer de tamanho exato.
+    // SAFETY: The bindings manage the COM interfaces returned by DXCore. Each query uses
+    // the property's documented data type and an exactly sized buffer.
     unsafe {
         let Ok(factory) = DXCoreCreateAdapterFactory::<IDXCoreAdapterFactory>() else {
             return Vec::new();
@@ -259,7 +259,7 @@ fn windows_adapters() -> Vec<Adapter> {
 #[cfg(windows)]
 fn property<T: Default>(adapter: &IDXCoreAdapter, property: Property) -> Option<T> {
     let mut result = T::default();
-    // SAFETY: apenas os chamadores acima usam esta função, com o T documentado para cada propriedade.
+    // SAFETY: The callers above use the documented T for each property.
     unsafe {
         if !adapter.IsPropertySupported(property) {
             return None;
@@ -288,7 +288,7 @@ impl GpuCounter {
     fn new(luid: LUID) -> Option<Self> {
         let mut query = PDH_HQUERY::default();
         let mut counter = PDH_HCOUNTER::default();
-        // SAFETY: handles são usados só na thread coletora e o query é liberado no Drop.
+        // SAFETY: Only the sampler thread uses these handles. Drop closes the query.
         unsafe {
             if PdhOpenQueryW(PCWSTR::null(), 0, &mut query) != 0 {
                 return None;
@@ -317,8 +317,8 @@ impl GpuCounter {
     }
 
     fn sample(&mut self) -> Option<u32> {
-        // SAFETY: PDH fornece o tamanho. Vec<usize> alinha os itens e os nomes
-        // apontam para o mesmo buffer, mantido vivo enquanto as instâncias são lidas.
+        // SAFETY: PDH reports the size. Vec<usize> aligns the items, and their names point into
+        // the same buffer, which stays alive while the instances are read.
         unsafe {
             if PdhCollectQueryData(self.query) != 0 {
                 return None;
@@ -372,8 +372,8 @@ impl GpuCounter {
                     *engines.entry(engine.to_owned()).or_default() += value.max(0.0);
                 }
             }
-            // Cada instância é um processo em um motor. Somar por motor e pegar
-            // o mais ocupado evita somar, por exemplo, 3D com decodificação de vídeo.
+            // Each instance reports one process on one engine. Sum by engine and use the busiest
+            // engine so unrelated activity such as 3D and video decoding is counted separately.
             engines
                 .into_values()
                 .reduce(f64::max)
@@ -385,7 +385,7 @@ impl GpuCounter {
 #[cfg(windows)]
 impl Drop for GpuCounter {
     fn drop(&mut self) {
-        // SAFETY: query pertence exclusivamente a esta instância.
+        // SAFETY: This instance owns the query exclusively.
         unsafe { PdhCloseQuery(self.query) };
     }
 }

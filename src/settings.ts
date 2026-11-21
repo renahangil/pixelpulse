@@ -194,8 +194,8 @@ async function readStartup(): Promise<void> {
 
 async function changeStartup(enabled: boolean): Promise<void> {
   if (busy) return;
-  // A leitura iniciada ao focar a janela pode terminar após o clique.
-  // Invalidá-la evita restaurar o estado antigo no checkbox.
+  // A startup query triggered by focus can finish after the user clicks.
+  // Invalidate that query so its result cannot restore an outdated checkbox state.
   startupRevision += 1;
   busy = true;
   showError();

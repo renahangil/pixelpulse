@@ -22,7 +22,7 @@ mod platform {
 
     pub fn update(value: Option<bool>) -> Result<bool, String> {
         let mut len = 0;
-        // SAFETY: buffer nulo consulta apenas se o processo tem identidade MSIX.
+        // SAFETY: A null buffer queries whether this process has an MSIX identity.
         if unsafe { GetCurrentPackageFullName(&mut len, None) } == ERROR_INSUFFICIENT_BUFFER {
             packaged(value)
         } else {
@@ -34,12 +34,12 @@ mod platform {
         struct Runtime;
         impl Drop for Runtime {
             fn drop(&mut self) {
-                // SAFETY: equilibra RoInitialize na mesma thread de bloqueio.
+                // SAFETY: Balance RoInitialize on the same blocking thread.
                 unsafe { RoUninitialize() };
             }
         }
 
-        // SAFETY: chamada feita numa thread de trabalho, com finalização via Drop.
+        // SAFETY: This runs on a worker thread and Drop performs the cleanup.
         unsafe { RoInitialize(RO_INIT_MULTITHREADED) }.map_err(|error| error.to_string())?;
         let _runtime = Runtime;
         let task = StartupTask::GetAsync(&HSTRING::from(TASK))
@@ -82,9 +82,9 @@ mod platform {
     fn portable(value: Option<bool>) -> Result<bool, String> {
         let run = w!(r"Software\Microsoft\Windows\CurrentVersion\Run");
         let name = w!("PixelPulse");
-        // O valor pertence ao PixelPulse. Consultar sua existência também permite
-        // desligar uma entrada antiga quando o executável avulso mudou de pasta.
-        // SAFETY: o Registro recebe strings NUL-terminated e buffers de tamanho explícito.
+        // PixelPulse owns this value. A presence check also lets users disable an old entry
+        // after moving the standalone executable.
+        // SAFETY: The registry receives NUL-terminated strings and explicitly sized buffers.
         unsafe {
             if let Some(enable) = value {
                 let status = if enable {
@@ -119,8 +119,8 @@ mod platform {
                 return Err(status.to_hresult().message());
             }
 
-            // RegQueryValueExW lê os metadados do valor sem expandir ou comparar
-            // o caminho. Fechamos o handle mesmo quando a consulta retorna um erro.
+            // RegQueryValueExW reads metadata without expanding or comparing the path.
+            // Close the handle even if the query fails.
             let mut size = 0;
             let mut kind = REG_VALUE_TYPE::default();
             let status = RegQueryValueExW(key, name, None, Some(&mut kind), None, Some(&mut size));

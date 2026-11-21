@@ -130,7 +130,7 @@ fn save(path: &Path, preferences: &Preferences) -> io::Result<()> {
         file.flush()?;
         file.sync_all()?;
         drop(file);
-        // Renomear no mesmo diretório mantém o arquivo anterior se a gravação falhar.
+        // Renaming within the same directory preserves the previous file if writing fails.
         fs::rename(&temp, path)
     })();
     if result.is_err() {

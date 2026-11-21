@@ -1,4 +1,4 @@
-//! Um único lock mantém o Snapshot atual e o histórico consistentes entre si.
+//! One lock keeps the latest snapshot and its history consistent.
 
 pub(crate) mod sampler;
 
@@ -49,7 +49,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new_with_receiver() -> (Self, Receiver<()>) {
-        // Um aviso pendente basta: mudanças rápidas de modo não acumulam uma fila.
+        // Coalesce rapid mode changes into a single pending wake-up.
         let (wake, receiver) = mpsc::sync_channel(1);
         (
             Self {
@@ -79,7 +79,7 @@ impl AppState {
             .cache
             .write()
             .map_err(|_| "não foi possível atualizar o cache de métricas".to_owned())?;
-        // Remover antes de inserir evita crescimento temporário além de 60 entradas.
+        // Evict first so the buffer never temporarily exceeds 60 samples.
         if cache.history.len() == HISTORY_LIMIT {
             cache.history.pop_front();
         }
@@ -89,7 +89,7 @@ impl AppState {
     }
 
     pub fn mode(&self) -> Mode {
-        // O atômico só escolhe o intervalo; o RwLock protege os dados das métricas.
+        // The atomic selects the interval, while the lock protects the collected metrics.
         match self.mode.load(Ordering::Relaxed) {
             1 => Mode::Expanded,
             _ => Mode::Collapsed,

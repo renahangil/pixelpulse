@@ -1,5 +1,5 @@
 :root {
-  /* Cada medida de arte parte desta unidade; as dimensões nativas vêm da Fase 3. */
+  /* The art grid starts here. Rust owns the native window dimensions. */
   --px: 3px;
   --radius: 4px;
   --text-primary: #d8d8de;

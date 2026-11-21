@@ -1,6 +1,6 @@
 [package]
 name = "pixelpulse"
-version = "0.1.0"
+version = "1.0.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2024"
@@ -22,30 +22,30 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# Apenas sistema e disco: sem rede, GPU do sysinfo ou pool de threads Rayon.
+# Enable system and disk metrics only, keeping network, sysinfo GPU support and Rayon disabled.
 sysinfo = { version = "0.40.3", default-features = false, features = ["system", "disk"] }
-# A DLL NVML é carregada em tempo de execução; sua ausência não impede iniciar.
+# Load NVML at runtime so the app can start without its DLL.
 nvml-wrapper = "0.13.0"
-# Acrylic opcional do sistema; a UI conserva um fundo RGBA se ele falhar.
+# Request optional system Acrylic and keep an RGBA fallback.
 window-vibrancy = "0.8.1"
 
 [target.'cfg(windows)'.dependencies]
-# Bindings já transitivos: consultar apenas o DWM da nossa janela, sem captura.
+# Reuse Windows bindings to query this window's DWM attributes without capturing the screen.
 windows = { version = "0.62.2", features = ["ApplicationModel", "Win32_Graphics_Dwm", "Win32_Graphics_DXCore",
     "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_System_Performance",
     "Win32_System_Registry", "Win32_System_WinRT", "Win32_System_SystemInformation", "Win32_UI_Accessibility",
     "Win32_UI_WindowsAndMessaging"] }
 
 
-# Opções oficiais: https://doc.rust-lang.org/cargo/reference/profiles.html
+# Cargo profile options: https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.release]
-# Prioriza o tamanho do executável em vez da velocidade máxima.
+# Optimize for executable size.
 opt-level = 's'
-# Otimiza em conjunto o código de diferentes crates, com maior tempo de build.
+# Optimize across crate boundaries at the cost of a longer build.
 lto = true
-# Compila cada crate em uma unidade para favorecer a otimização global.
+# Use a single code generation unit to improve whole-crate optimization.
 codegen-units = 1
-# Encerra o processo em caso de panic, dispensando o código de desenrolar a pilha.
+# Abort on panic and omit stack unwinding code.
 panic = 'abort'
-# Remove símbolos do binário final para reduzir seu tamanho.
+# Strip symbols to reduce the size of the final executable.
 strip = true

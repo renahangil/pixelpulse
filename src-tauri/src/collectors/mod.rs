@@ -1,4 +1,4 @@
-//! Coleta local reutilizável: sem janela, eventos Tauri ou threads em segundo plano.
+//! Reusable local collector with no window, Tauri events or background threads.
 
 mod cpu;
 mod disk;
@@ -12,7 +12,7 @@ pub use gpu::GpuDevice;
 use serde::Serialize;
 use sysinfo::System;
 
-/// MB e GB são decimais: 1 MB = 1.000.000 bytes e 1 GB = 1.000.000.000 bytes.
+/// MB and GB use decimal units: 1 MB = 1,000,000 bytes and 1 GB = 1,000,000,000 bytes.
 #[derive(Debug, Clone, Serialize)]
 pub struct Snapshot {
     pub cpu_percent: f32,
@@ -22,7 +22,7 @@ pub struct Snapshot {
     pub disk: Option<DiskInfo>,
     pub system_volume: Option<String>,
     pub volumes: Vec<VolumeUsage>,
-    /// None indica que não há adaptador físico disponível. Sensores são independentes.
+    /// None means no physical adapter is available. Sensor availability is independent.
     pub gpu: Option<GpuInfo>,
 }
 
@@ -32,7 +32,7 @@ pub struct DiskInfo {
     pub used_gb: f64,
 }
 
-/// Cada sensor é independente: placas antigas podem oferecer apenas parte deles.
+/// Older GPUs may expose only some of these sensors.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GpuInfo {
     pub usage_percent: Option<u32>,
@@ -59,7 +59,7 @@ pub struct Inventory {
 pub(super) const BYTES_PER_MB: f64 = 1_000_000.0;
 pub(super) const BYTES_PER_GB: f64 = 1_000_000_000.0;
 
-/// Mantém o histórico de CPU e a NVML entre amostras, evitando reinicializações caras.
+/// Retain the CPU baseline and NVML session to avoid expensive reinitialization.
 pub struct Collector {
     system: System,
     last_cpu_sample: Instant,
@@ -82,13 +82,13 @@ impl Collector {
         })
     }
 
-    /// A primeira chamada espera o mínimo necessário para ter duas amostras de CPU.
-    /// O chamador define a cadência normal (por exemplo, 2 s); aqui não há loop.
+    /// The first call waits the minimum time required for two CPU samples.
+    /// The caller determines subsequent intervals, such as 2 seconds.
     pub fn collect(&mut self) -> Result<Snapshot, Box<dyn Error>> {
         self.collect_metrics(true, &[])
     }
 
-    /// Mantém o mesmo formato do Snapshot, mas não consulta sensores ocultos na UI.
+    /// Keep the snapshot shape and skip sensors the UI does not display.
     pub fn collect_for_ui(&mut self, selected: &[String]) -> Result<Snapshot, Box<dyn Error>> {
         self.collect_metrics(false, selected)
     }
@@ -135,12 +135,12 @@ impl Collector {
         }
     }
 
-    /// Após uma pausa, não misturamos todo o período oculto com a leitura atual.
+    /// Reset the CPU baseline after a pause so the sample excludes hidden time.
     pub fn reset_cpu_baseline(&mut self) {
         self.last_cpu_sample = cpu::prime(&mut self.system);
     }
 
-    /// Permite comparar a CPU do processo com a capacidade total da máquina.
+    /// Compare process CPU use with total machine capacity.
     pub fn logical_cpu_count(&self) -> usize {
         self.system.cpus().len().max(1)
     }

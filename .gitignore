@@ -23,10 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# Compilação Rust em qualquer nível do projeto
+# Rust build output at any project level
 target/
 
-# Arquivos gerados pelo Windows e macOS
+# Windows and macOS system files
 Thumbs.db
 ehthumbs.db
 Desktop.ini
@@ -35,7 +35,7 @@ $RECYCLE.BIN/
 .LSOverride
 ._*
 
-# Credenciais e artefatos de distribuição local
+# Credentials and local distribution artifacts
 .env
 .env.*
 !.env.example

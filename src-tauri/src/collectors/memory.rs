@@ -3,14 +3,14 @@ use sysinfo::{MemoryRefreshKind, System};
 use super::BYTES_PER_MB;
 
 pub(super) fn collect(system: &mut System) -> (f64, f64, f32) {
-    // Não coletamos swap: a ilha precisa apenas da RAM física.
+    // The island displays physical RAM, so skip swap.
     system.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
     from_bytes(system.used_memory(), system.total_memory())
 }
 
 fn from_bytes(used: u64, total: u64) -> (f64, f64, f32) {
     let used = used.min(total);
-    // Um total desconhecido não pode provocar divisão por zero ou NaN no JSON.
+    // Handle an unknown total before dividing or serializing to JSON.
     let percent = if total == 0 {
         0.0
     } else {

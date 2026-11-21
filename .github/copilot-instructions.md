@@ -1,9 +1,10 @@
-# Instruções para o Copilot — PixelPulse
-Siga o AGENTS.md na raiz do repositório. Resumo:
-- Projeto: app para Windows 11 Pro em Rust + Tauri 2, UI em TypeScript puro, visual pixel art discreto sobre glass escuro. Licença GPL-3.0.
-- Leveza é a prioridade: sem loops ocupados, sem dependências pesadas, UI só atualiza quando visível, animações só em transform e opacity.
-- Rust: cargo fmt e cargo clippy sem warnings, Result em vez de unwrap, GPU ausente não pode derrubar o app.
-- Privacidade: nunca ler nem guardar o conteúdo de prompts ou respostas de ferramentas de IA, só contagens e datas.
-- Licença: não sugira dependências nem trechos de código com licença incompatível com a GPL-3.0.
-- Ao revisar: aponte bugs, consumo de CPU e RAM e clareza para iniciante, com arquivo e linha, e sugira a correção mínima.
-- Responda em português, em linguagem simples.
+# PixelPulse contributor instructions
+
+Read [AGENTS.md](../AGENTS.md) and the [roadmap](../docs/PLANO.md) before editing. Keep changes focused and preserve the Windows 11 release behavior.
+
+- Use stable Rust, Tauri 2 and plain TypeScript, HTML and CSS. Reuse the existing collectors and shared settings state.
+- Keep the sample loop blocking between updates. Only refresh necessary sensors and update visible UI when its rendered values change.
+- Follow the [design specification](../docs/DESIGN.md) for pixel-grid spacing, contrast, local assets and reduced motion. Preserve all shipped UI locales.
+- Avoid secrets, telemetry and unnecessary dependencies. Confirm external APIs in official documentation and check license compatibility.
+- Write comments and documentation in English. Explain why the code works this way, especially around native APIs and shared state.
+- Verify a Windows release build, cargo fmt, Clippy with warnings denied and unit tests before submitting.

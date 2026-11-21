@@ -24,8 +24,8 @@ impl Sampler {
         let window = app.get_webview_window("main").ok_or_else(|| {
             io::Error::new(io::ErrorKind::NotFound, "janela principal não encontrada")
         })?;
-        // Guardar só o identificador evita getters síncronos no event loop da UI:
-        // ao encerrar, a UI pode aguardar join sem prender a thread em um getter.
+        // Keep only the window identifier to avoid synchronous reads on the UI event loop.
+        // During shutdown, the UI can join the worker even while a read would have been queued.
         #[cfg(target_os = "windows")]
         let hwnd = window.hwnd().map_err(io::Error::other)?.0 as usize;
         let worker_state = state.clone();
@@ -50,15 +50,15 @@ impl Sampler {
                 #[cfg(debug_assertions)]
                 let mut count = 0_u64;
                 while !worker_state.is_stopped() {
-                    // Falta de foco não significa ocultação: a ilha nasce sem foco.
+                    // The island starts without focus and can still be visible.
                     #[cfg(target_os = "windows")]
                     let native_visible = {
                         use windows::Win32::{
                             Foundation::HWND,
                             UI::WindowsAndMessaging::{IsIconic, IsWindowVisible},
                         };
-                        // SAFETY: consulta somente flags da nossa janela; se destruída,
-                        // um HWND inválido retorna false. Nenhum ponteiro é desreferenciado aqui.
+                        // SAFETY: Query flags on the island HWND. Win32 returns false for a destroyed handle.
+                        // This call does not dereference a pointer.
                         unsafe {
                             IsWindowVisible(HWND(hwnd as _)).as_bool()
                                 && !IsIconic(HWND(hwnd as _)).as_bool()
@@ -69,9 +69,9 @@ impl Sampler {
                         && !window.is_minimized().unwrap_or(true);
                     if !worker_state.ui_visible() || !native_visible {
                         paused = true;
-                        previous = None; // Ao voltar, enviar uma leitura mesmo se o valor repetir.
-                        // O WebView avisa visibilitychange. A checagem nativa a cada 5 s
-                        // cobre hide/show sem esse aviso; aqui não há coleta nem eventos.
+                        previous = None; // Publish the first sample after restoration, even if it matches.
+                        // The WebView reports visibility changes. The 5 s native check catches hide/show
+                        // without that event and skips sensor reads and event emission.
                         let resumed = if worker_state.ui_visible() {
                             !matches!(
                                 changes.recv_timeout(Duration::from_secs(5)),
@@ -98,8 +98,8 @@ impl Sampler {
                                 eprintln!("[amostragem] {error}");
                                 break;
                             }
-                            // O histórico recebe toda amostra; só o evento usa a projeção visual.
-                            // Não comparar só o inteiro: um segmento pode mudar antes do texto.
+                            // History keeps every sample. Events compare only what the UI renders.
+                            // Compare segments too, since they may change independently of the integer text.
                             let presentation = Presentation::new(&snapshot, worker_state.mode());
                             if worker_state.ui_visible() && previous.as_ref() != Some(&presentation)
                             {
@@ -168,17 +168,17 @@ fn wait_for_next(
         if remaining.is_zero() {
             return true;
         }
-        // Dorme até o prazo OU até uma mudança de modo/saída; não existe loop ocupado.
+        // Wait for a deadline, mode change or stop signal without busy polling.
         match changes.recv_timeout(remaining) {
             Ok(()) => continue,
-            // Recalcular o prazo também trata uma mudança de modo junto ao timeout.
+            // Recompute the deadline to handle mode changes racing with the timeout.
             Err(RecvTimeoutError::Timeout) => continue,
             Err(RecvTimeoutError::Disconnected) => return false,
         }
     }
 }
 
-/// Mesmas quantizações usadas pelo TypeScript, sem strings nem alocações por evento.
+/// Match TypeScript rounding without allocating strings for each event.
 #[derive(Debug, PartialEq, Eq)]
 enum Presentation {
     Collapsed(Option<(usize, u8)>),
@@ -271,7 +271,7 @@ mod tests {
         );
         assert_ne!(collapsed, Presentation::new(&snapshot, Mode::Expanded));
 
-        // O percentual continua 50%, mas agora o ponto e o rótulo são da CPU.
+        // The percentage stays at 50%, but the dot and label now identify the CPU.
         snapshot.cpu_percent = 50.0;
         assert_eq!(
             Presentation::new(&snapshot, Mode::Collapsed),

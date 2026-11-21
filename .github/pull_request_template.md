@@ -1,24 +1,18 @@
-## O que mudou
+## Summary
 
-- Descreva as mudanças e a fase correspondente.
+Describe the change and why it is needed. Link the relevant issue or roadmap item.
 
-## Como testei
+## Validation
 
-- [ ] `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`
-- [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`
-- [ ] `npm run tauri build`
-- Outros testes e resultados:
+List commands, test results and any Windows build, hardware, DPI or locale details that affect the result. Include screenshots for visible changes.
 
-## Critérios de aceite da fase
+- [ ] Windows release build, formatting, Clippy and tests pass.
+- [ ] Relevant user-facing behavior has been verified on Windows.
 
-- [ ] Critérios da fase atendidos (descreva abaixo).
-- [ ] `docs/PLANO.md` atualizado com status, versão e registro.
-- [ ] Nenhuma implementação de fases posteriores.
-- Critérios e evidências:
+## Acceptance criteria
 
-## Impacto em CPU e RAM
+List the release or issue criteria this change satisfies. Note any pending validation.
 
-- Build release usado na medição:
-- CPU média do processo Rust:
-- RAM do processo Rust e total com WebView2:
-- Método e duração da medição (ou motivo para não medir):
+## CPU and memory impact
+
+Report release-build measurements when applicable, including the mode, measurement window, memory counter and whether WebView2 is included. Otherwise, describe why no impact is expected.

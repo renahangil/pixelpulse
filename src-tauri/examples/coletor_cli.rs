@@ -1,5 +1,5 @@
-//! Execute com `cargo run --release --example coletor_cli`; Ctrl+C encerra.
-//! Um número opcional limita as amostras: `cargo run --release --example coletor_cli -- 5`.
+//! Run with `cargo run --release --example coletor_cli`. Press Ctrl+C to exit.
+//! Pass a sample limit with `cargo run --release --example coletor_cli -- 5`.
 
 use std::{
     error::Error,
@@ -15,7 +15,7 @@ use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, get_current_pid};
 
 #[derive(Serialize)]
 struct ProcessInfo {
-    /// Percentual normalizado para a máquina toda, como no Gerenciador de Tarefas.
+    /// Normalize process CPU usage by total machine capacity, as in Task Manager.
     cpu_percent: f32,
     ram_used_mb: f64,
 }
@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_cpu()
         .with_memory()
         .without_tasks();
-    // Só o nosso PID: não coletamos argumentos, ambiente, disco nem todos os processos.
+    // Refresh only this PID and skip process arguments, environment and disk statistics.
     process_system.refresh_processes_specifics(
         ProcessesToUpdate::Some(&[pid]),
         true,
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut count = 0;
     let mut output = io::stdout().lock();
     loop {
-        // Não fazemos espera ocupada nem tentamos compensar atrasos com rajadas de coleta.
+        // Wait between samples and skip catch-up bursts after delays.
         thread::sleep(next_sample.saturating_duration_since(Instant::now()));
         let started = Instant::now();
         let snapshot = collector.collect()?;
