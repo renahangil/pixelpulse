@@ -1,124 +1,136 @@
-# Distribuição do PixelPulse pela Microsoft Store
+# Publish PixelPulse on the Microsoft Store
 
-O lançamento da loja usa **MSIX x64** para Windows 11 com WebView2 Runtime.
-O Windows gerencia a instalação e as atualizações. A localização usual é
-`C:\Program Files\WindowsApps\<identidade_do_pacote>` no volume padrão de
-aplicativos escolhido pelo sistema. Para consultar uma instalação, use
-`Get-AppxPackage -Name "<Package/Identity/Name>" | Select-Object InstallLocation`.
+Use the **MSIX** submission path in Partner Center for the Windows 11 x64 desktop app. Windows manages installation and updates. On a system using the default app volume, the package usually lives under `C:\Program Files\WindowsApps`. Query the actual location with `Get-AppxPackage -Name '<identity name>' | Select-Object InstallLocation`. User preferences are stored separately in `%USERPROFILE%\.pixelpulse\settings.json` and may survive uninstall.
 
-As preferências ficam em `<perfil do usuário>\.pixelpulse\settings.json`.
-Esse arquivo pode permanecer após desinstalar. Inicialização é por usuário e
-começa desativada. A variante MSIX usa `StartupTask`. No executável avulso,
-o checkbox acompanha a entrada PixelPulse no Registro. Desmarcar remove a
-entrada, e marcar grava o caminho da cópia em execução. Se mover o executável,
-desmarque e marque novamente. Uma política ou opção de inicialização do Windows
-ainda pode impedir a execução. Desative a inicialização da variante avulsa antes
-de habilitar a versão da loja para evitar duas ilhas no login.
+## 1. Prepare the publisher and product
 
-## 1. Prepare a conta e reserve o produto
+1. Sign in to [Partner Center](https://partner.microsoft.com/dashboard) with the individual developer account enrolled in the Windows program. Finish identity verification and agreements, confirm the public publisher name and verify the account contact details. Set up tax and payout profiles if required for the distribution you choose.
+2. In **Apps and games**, create a product using **MSIX or PWA** and reserve **PixelPulse**. If the reserved name differs, align the manifest, app branding and listing before submission.
+3. Open **Product management → Product identity**. Copy **Package/Identity/Name**, **Package/Identity/Publisher** and **Package/Properties/PublisherDisplayName** exactly. Keep these stable across updates. The Tauri identifier serves a separate purpose.
+4. Prepare a tested source revision, the listing copy, real screenshots, a public support contact and a privacy notice URL. Plan to make the corresponding GPL-3.0 source and build instructions accessible when the binary becomes available.
 
-1. Entre no [Partner Center](https://partner.microsoft.com/dashboard) com a conta
-   individual inscrita no programa Windows e confirme que a verificação da conta e o
-   contrato de desenvolvedor estão concluídos. Use o nome público que deseja exibir.
-   Revise os dados de contato. Para produto pago, configure também os perfis fiscal e
-   de pagamento conforme as instruções do portal.
-2. No workspace **Apps and games**, crie um produto do tipo **MSIX ou PWA** e reserve
-   **PixelPulse** se estiver disponível. Use exatamente o nome reservado no pacote
-   e na ficha. Caso o nome esteja indisponível, ajuste o nome nos manifestos,
-   executável e materiais antes de submeter.
-3. Em **Product management → Product identity**, copie três valores da ficha do
-   produto: **Package/Identity/Name**, **Package/Identity/Publisher** e
-   **Package/Properties/PublisherDisplayName**. O identificador Tauri
-   `com.renahangil.pixelpulse` continua sendo interno. Use a identidade fornecida
-   pela Store no MSIX e mantenha a mesma em futuras atualizações.
+## 2. Install the SDK tools
 
-Referência: [Primeiros passos na Store](https://learn.microsoft.com/en-us/windows/apps/publish/get-started).
+Run in PowerShell on Windows x64. The Windows SDK provides MakeAppx, SignTool and the Windows App Certification Kit (WACK). In the SDK installer, enable the desktop tooling, signing tools and certification kit if offered as separate components.
 
-## 2. Gere e valide o pacote
+```powershell
+winget search --id Microsoft.WindowsSDK.10.0.28000 --exact --source winget
+winget install --id Microsoft.WindowsSDK.10.0.28000 --exact --source winget
+```
 
-1. Instale o **Windows SDK** com as ferramentas MakeAppx e SignTool. Use a máquina
-   x64 com as dependências de build do projeto.
-2. A partir da raiz, gere o executável e use os três valores do portal:
+With the SDK installed, locate a single x64 tool directory containing both programs:
 
-   ```powershell
-   npm ci
-   npm run tauri build -- --no-bundle
+```powershell
+$sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+$sdkBin = Get-ChildItem -LiteralPath $sdkRoot -Directory |
+    Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+    Sort-Object { [version]$_.Name } -Descending |
+    ForEach-Object { Join-Path $_.FullName 'x64' } |
+    Where-Object {
+        (Test-Path (Join-Path $_ 'MakeAppx.exe')) -and
+        (Test-Path (Join-Path $_ 'SignTool.exe'))
+    } |
+    Select-Object -First 1
 
-   .\src-tauri\packaging\build-msix.ps1 `
-     -IdentityName '<Package/Identity/Name>' `
-     -Publisher '<Package/Identity/Publisher>' `
-     -PublisherDisplayName '<Package/Properties/PublisherDisplayName>' `
-     -Version '0.2.0.0'
-   ```
+if (-not $sdkBin) { throw 'Install the Windows SDK x64 packaging and signing tools.' }
+$makeAppx = Join-Path $sdkBin 'MakeAppx.exe'
+$signTool = Join-Path $sdkBin 'SignTool.exe'
+& $makeAppx /?
+& $signTool /?
+```
 
-3. Encontre o pacote em `src-tauri/target/msix/`. Para cada atualização, aumente
-   a versão do pacote e deixe seu quarto componente em `0` para uso da Store.
-   No manifesto, `MinVersion` estabelece Windows 11 como piso inicial e
-   `MaxVersionTested` registra a família usada como referência. Revise com os
-   resultados da matriz de teste antes da submissão. Mantenha `TaskId` e o ID do
-   aplicativo estáveis para as atualizações.
-4. Antes da submissão, instale uma cópia de teste assinada com certificado de
-   desenvolvimento cujo assunto corresponde ao Publisher de teste, em uma máquina
-   ou VM de teste que confie expressamente nesse certificado. Use uma identidade
-   de teste separada, por exemplo `PixelPulse.LocalTest` e
-   `CN=PixelPulse Local Test`. Execute o Windows App Certification Kit (WACK)
-   quando disponível e teste a instalação limpa, atualização, desinstalação,
-   inicialização desativada, opt-in no login, fechamento da ilha e persistência.
-   Verifique também que o WebView2 Runtime está disponível na instalação suportada.
-5. Envie o **MSIX com a identidade real** na seção **Packages**. A Store cuida
-   da assinatura de distribuição após a certificação. O MSIX gerado localmente é
-   sem assinatura de distribuição. Assinatura local para sideload é um passo
-   distinto e a Store não assina o executável avulso.
+See [Windows SDK installation](https://learn.microsoft.com/en-us/windows-hardware/drivers/install-the-wdk-using-winget#windows-sdk), [MakeAppx usage](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool) and [SignTool usage](https://learn.microsoft.com/en-us/windows/msix/package/sign-app-package-using-signtool).
 
-Referências: [MakeAppx](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool),
-[assinatura](https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview),
-[armazenamento no MSIX](https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes).
+## 3. Build and validate the MSIX
 
-## 3. Preencha a ficha no Partner Center
+Use a Windows x64 machine with Node.js, Rust MSVC and the Visual Studio C++ build tools. Build from the exact source revision intended for public distribution. Set the four-part Store version to match the release, for example `1.0.0.0` for app version `1.0.0`. Increment the accepted package version for updates and keep its last component at `0`.
 
-| Seção | Dados propostos ou a preparar |
+```powershell
+npm ci
+npm run tauri build -- --no-bundle
+
+.\src-tauri\packaging\build-msix.ps1 `
+  -IdentityName '<Package/Identity/Name>' `
+  -Publisher '<Package/Identity/Publisher>' `
+  -PublisherDisplayName '<Package/Properties/PublisherDisplayName>' `
+  -Version '1.0.0.0' `
+  -MakeAppxPath $makeAppx
+```
+
+The package is under `src-tauri\target\msix`. Use the exact path printed by the script. Record the source revision and package hash, then unpack into a fresh temporary directory to review `AppxManifest.xml`, the executable, license and logos.
+
+```powershell
+$package = (Resolve-Path '<path printed by the build script>').Path
+Get-FileHash -Algorithm SHA256 -LiteralPath $package
+git rev-parse HEAD
+$inspection = Join-Path ([IO.Path]::GetTempPath()) ("PixelPulse-" + [guid]::NewGuid())
+& $makeAppx unpack /p $package /d $inspection
+Get-Content (Join-Path $inspection 'AppxManifest.xml')
+```
+
+Review the identity against Partner Center, architecture `x64`, Windows 11 minimum build, app entry point, `runFullTrust` and the disabled-by-default startup task. Keep the app and task IDs stable. Verify the actual supported Windows and WebView2 versions in a clean environment.
+
+For local installation, build a separate package with identity `PixelPulse.LocalTest` and publisher `CN=PixelPulse Local Test`. Sign it with a development certificate whose subject exactly matches that publisher. In a dedicated test VM, import the public certificate into Local Computer → Trusted People only after checking its fingerprint. Keep the signing key and PFX outside the repository.
+
+```powershell
+$testPackage = (Resolve-Path '<local-test MSIX path>').Path
+& $signTool sign /fd SHA256 /f '<development PFX path>' $testPackage
+if ($LASTEXITCODE -ne 0) { throw 'Local MSIX signing failed.' }
+& $signTool verify /pa /v $testPackage
+if ($LASTEXITCODE -ne 0) { throw 'Local MSIX signature verification failed.' }
+Add-AppxPackage -Path $testPackage
+Get-AppxPackage -Name 'PixelPulse.LocalTest' | Select-Object Version, InstallLocation
+```
+
+Run WACK against the installed app or package and keep its report. Test clean install, launch from Start, upgrade with a higher version and the same test identity, and uninstall. Include the following behavioral checks:
+
+- Collapsed and expanded island, pin/unpin with ESC, display scaling, context menu and complete process exit.
+- Diagnostics, optional volumes, language switching, preference persistence, and meaningful display when GPU sensors are unavailable.
+- Startup off on a clean profile. Enable it, sign out and back in, verify launch, then disable and repeat. Turn off startup in a standalone copy before testing packaged startup.
+- Release CPU and memory, WebView2 availability on the supported OS, and no duplicate island after sign-in.
+
+Upload the package built with the real identity. Microsoft signs the distribution MSIX after certification. The development certificate is for local test installation. A standalone EXE has its own signing and distribution requirements. [Store signing FAQ](https://learn.microsoft.com/en-us/windows/apps/publish/faq/get-started-with-the-microsoft-store) · [Store readiness checklist](https://learn.microsoft.com/en-us/windows/apps/publish/store-readiness-checklist)
+
+## 4. Create the submission in Partner Center
+
+Open the reserved product and choose **Start your submission**. Complete the sections shown in your account and save each page before moving on.
+
+| Section | What to enter and verify |
 | --- | --- |
-| Pricing and availability | Gratuito como proposta inicial. Escolha mercados, audiência pública ou privada, visibilidade e data de lançamento. |
-| Properties | Categoria de utilitários/ferramentas, conforme o catálogo exibido. Informe desenvolvedor, copyright, termos, suporte e URL de privacidade quando exigida. Responda aos campos do portal conforme as funcionalidades reais. |
-| Age ratings | Complete o questionário IARC. Responda sobre conteúdo, rede, dados, compras e interação com as características do build submetido. |
-| Packages | MSIX Windows Desktop x64. Confira nome, Publisher, versão e arquitetura antes de enviar. |
-| Store listings | Prepare nome, descrição, lista de recursos, novidades, capturas reais, logotipo e termos de busca em inglês, português brasileiro e espanhol. Use as dimensões e formatos indicados no portal. |
-| Submission options | Explique `runFullTrust` para executar o aplicativo desktop Tauri, consultar métricas do Windows e manter a janela flutuante. Documente a tarefa de inicialização desativada por padrão e o teste do menu. |
+| **Pricing and availability** | Start with **Free** if that matches your release plan. Select supported markets and audience. For a coordinated launch, choose a publication hold or schedule when available, and review any market-specific requirements. |
+| **Properties** | Choose the utilities/tools category offered by the form. Review publisher, copyright, website and licensing entries. Provide working HTTPS support and privacy URLs where requested. Describe actual features and dependencies only. |
+| **Age ratings** | Complete the IARC questionnaire using the submitted build. Answer the questions about content, purchases, interaction, network use and data accurately. |
+| **Packages** | Upload the real-identity MSIX. Wait for package validation and inspect architecture, version, supported device families and detected capabilities. |
+| **Store listings** | Enter English (United States) first. Add Brazilian Portuguese and Spanish listings after proofreading if you want localized Store pages. App language support and Store listing language are separate. Prepare a description, feature list, release notes, keywords and screenshots as requested. |
+| **Submission options** | Enter the test notes below and restricted capability justification if prompted. Review visibility, release timing and contact details. |
 
-**Descrição sugerida em inglês:** PixelPulse is a compact pixel-art system
-monitor for Windows. Keep CPU, memory, graphics and storage usage in sight with a
-floating panel, and choose which local drives to monitor.
+### English (United States) listing copy
 
-**Descrição sugerida em português:** PixelPulse é um monitor de sistema em pixel
-art para Windows. Acompanhe CPU, memória, GPU e espaço ocupado numa ilha flutuante
-e escolha quais unidades locais exibir.
+| Field | Suggested copy |
+| --- | --- |
+| App name | PixelPulse |
+| Short description | A lightweight pixel-art system monitor with a floating island for Windows. |
+| Description | Keep your system metrics in sight with PixelPulse. The compact island shows the highest reading at a glance and expands to show CPU, memory, graphics and storage. Open System Diagnostics to inspect your PC, choose extra drives, change the language or opt in to launch at sign-in. Hardware readings and preferences stay on your PC. GPU metrics depend on driver and hardware support. |
+| Features | Floating pixel-art island. CPU, memory, GPU and drive metrics. System diagnostics. Optional additional drives and startup. English (US), Brazilian Portuguese and Spanish interface. |
+| Keywords | System monitor, CPU, memory, GPU, disk usage, pixel art |
+| What's new | First public release. Includes a floating system monitor, local diagnostics, selectable drives, three interface languages and optional Windows startup. |
+| Support and privacy | Enter the actual public support and privacy URLs. Check both while signed out. Use a support contact you monitor. |
 
-**Descrição sugerida em espanhol:** PixelPulse es un monitor de sistema con arte
-pixelado para Windows. Consulta CPU, memoria, GPU y espacio ocupado en un panel
-flotante y elige las unidades locales que quieres mostrar.
+Prepare screenshots from the exact release build: collapsed island, expanded metrics, Diagnostics, Devices and preferences. Use the Store's current size and format constraints. Keep text legible, crop out unrelated apps and remove account names, identifying paths and other personal information. Use the same project branding in the app, listing icon and screenshots.
 
-**Notas para a certificação:** ao abrir, a janela pequena aparece centralizada
-no topo do monitor principal. Passe o mouse para expandir e clique para fixar.
-No botão direito, abra **System Diagnostics** ou use **Exit PixelPulse** para
-encerrar. Em **Devices**, selecione um volume extra. **Startup** é opt-in.
-**Language** permite alternar entre inglês americano, português brasileiro e espanhol.
-GPU, tipo de disco e métricas de hardware dependem das informações que o Windows
-e os drivers oferecem. Dados indisponíveis têm indicação na tela.
+### Notes for certification
 
-**Privacidade e licença:** descreva o inventário e as leituras locais, as
-preferências gravadas e a ausência de envio desses dados pelo PixelPulse. Antes de
-distribuir sob GPL-3.0, providencie acesso público ao código-fonte correspondente
-ao binário e às instruções de build, inclusive as partes necessárias para
-gerar o MSIX. Uma branch em repositório privado não dá esse acesso aos usuários.
-O pacote inclui `LICENSE` e o executável inclui a licença OFL da fonte.
-Revise os termos de distribuição e a ficha conforme o pacote final.
+> PixelPulse is a Windows desktop system monitor. No account is required. On launch, the island is centered at the top of the primary monitor. Hover to expand, click to pin and press ESC to unpin. Right-click the island and choose System Diagnostics to inspect the PC. In Devices, select another local drive if available. Startup is off by default and can be enabled by the user. Language offers English (US), Brazilian Portuguese and Spanish. Right-click and choose Exit PixelPulse to close the app. GPU sensors and drive-type identification may vary with hardware and drivers.
 
-Com todos os campos concluídos, selecione **Submit for certification**. Se a
-certificação pedir ajustes, consulte o relatório, corrija o problema e aumente a
-versão do pacote antes de reenviar. O processo de publicação e a conta do
-Partner Center são operados pelo titular.
+If the form requests a restricted capability explanation, explain that `runFullTrust` is needed for the packaged Win32 Tauri process to read local Windows metrics and manage its floating window using standard Windows APIs. The app runs at the user's privilege level. Explain the opt-in `StartupTask` separately.
 
-Referências: [Submissão MSIX e campos](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/create-app-submission),
-[erros de submissão](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/resolve-submission-errors),
-[GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html) e
-[checklist da Store](https://learn.microsoft.com/en-us/windows/apps/publish/store-readiness-checklist).
+Describe the local readings and settings accurately in the privacy notice, including how to remove the local settings file. Review licensing for the distributed binary and assets, including GPL-3.0 corresponding source and the embedded font's OFL notice. Check the current Store terms against the license before submitting.
+
+## 5. Submit and release
+
+1. Preview the listing in each supported language. Check links, screenshots, regions, price, package identity, validation warnings and the chosen publication timing. Archive the exact MSIX, its SHA-256, source revision, WACK report and submission text.
+2. Select **Submit for certification**. Monitor certification in Partner Center. If Microsoft requests a change, address the specific finding, rebuild and retest. Use a higher package version when replacing a package as required by the portal.
+3. When certified, release using the selected timing. Open the listing while signed out and verify localized pages, support links and accessibility. On a clean Windows account, install from the Store and smoke-test launch, settings, startup and exit.
+4. Keep the listing and corresponding source link accurate for the distributed version. For updates, retain the same product and package identity, increase the version, and repeat package and install validation.
+
+[Create a Store submission](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/create-app-submission?pivots=store-installer-msix) · [MSIX package requirements](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/package-version-numbering) · [GPL-3.0 license](https://www.gnu.org/licenses/gpl-3.0.html)
