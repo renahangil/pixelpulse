@@ -32,6 +32,10 @@ Use an up-to-date **Windows 11 x64** installation with WebView2, Node.js 24 LTS,
    .\src-tauri\target\release\pixelpulse.exe
    ```
 
+## Download from the Microsoft Store
+
+[Get PixelPulse on the Microsoft Store](https://apps.microsoft.com/detail/9NJJC5GD7F1T).
+
 ## Project documentation
 
 [Design](docs/DESIGN.md) · [Repository map](docs/STRUCTURE.md) · [Roadmap](docs/ROADMAP.md) · [Release checklist](docs/RELEASING.md)

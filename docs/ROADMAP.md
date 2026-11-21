@@ -1,6 +1,6 @@
 # PixelPulse roadmap
 
-Plan revision 0.12 · First production version 1.0.0
+Plan revision 0.13 · First production release 1.0.0.0
 
 ## Release decisions
 
@@ -54,10 +54,17 @@ Keep Tauri for this release. If repeat release measurements with the same counte
 - Validate native window semantics on GNOME Wayland early. Wayland delegates placement and stacking to the compositor, so exact top-center and always-on-top behavior may require a supported compositor integration or a regular-window fallback. Test scale, pointer interaction and context menus. Build with WebKitGTK and validate a Linux package and CI on the supported baseline. [Ubuntu releases](https://wiki.ubuntu.com/Releases) · [Tauri Linux prerequisites](https://v2.tauri.app/start/prerequisites/#linux)
 - Explore local AI usage counters for Claude Code and Codex. Read only token counts and timestamps. Keep prompt and reply content out of the feature.
 
+## First release dependency review
+
+GitHub Dependabot alert 1 (GHSA-wrw7-89jp-8q8g) flags glib 0.18.5 in the cross-platform Cargo lockfile. Tauri's Linux GTK/WebKitGTK dependencies require the glib 0.18 series. The upstream fix starts at 0.20, which is incompatible with those constraints. Cargo's resolved dependency tree for x86_64-pc-windows-msvc contains no glib. The Windows release uses WebView2.
+
+Review this advisory before enabling Linux builds or release targets. Linux support requires resolving the affected dependency through a supported upstream stack. The npm audit reported zero known vulnerabilities at the time of the review. [GitHub advisory](https://github.com/advisories/GHSA-wrw7-89jp-8q8g) ? [Tauri upstream issue](https://github.com/tauri-apps/tauri/issues/12048)
+
 ## Version history
 
 | Plan revision | Date | Record |
 | --- | --- | --- |
+| 0.13 | 2026-11-21 | Prepared the 1.0.0.0 tag from verified main commits, the Microsoft Store listing link, the dependency review, and the GitHub release checklist. Store submission remains a separate step. |
 | 0.12 | 2026-11-20 | Release candidate 1.0.0, Windows CI, documentation in English, release checklist and final settings typography. |
 | 0.11 | 2026-11-20 | Diagnostics, startup, volumes, GPU fallback, locales and MSIX preparation. |
 | 0.10 | 2026-11-20 | Opaque island, metric identification, z-order, exit and icon. |
