@@ -24,7 +24,7 @@ Explain changes clearly in the user's language and describe each file created or
 
 ## Design and structure
 
-Use the [design specification](docs/DESIGN.md) for the 3 px art grid, colors, segment shading, local font, inline SVG icons and reduced-motion rules. Keep assets small and local. Keep the [repository map](docs/ESTRUTURA.md) current when adding files or folders.
+Use the [design specification](docs/DESIGN.md) for the 3 px art grid, colors, segment shading, local font, inline SVG icons and reduced-motion rules. Keep assets small and local. Keep the [repository map](docs/STRUCTURE.md) current when adding files or folders.
 
 ## Code and privacy
 

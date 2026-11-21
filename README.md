@@ -34,7 +34,7 @@ Use an up-to-date **Windows 11 x64** installation with WebView2, Node.js 24 LTS,
 
 ## Project documentation
 
-[Design](docs/DESIGN.md) · [Repository map](docs/ESTRUTURA.md) · [Roadmap](docs/PLANO.md) · [Release checklist](docs/RELEASING.md)
+[Design](docs/DESIGN.md) · [Repository map](docs/STRUCTURE.md) · [Roadmap](docs/ROADMAP.md) · [Release checklist](docs/RELEASING.md)
 
 ## Licenses
 

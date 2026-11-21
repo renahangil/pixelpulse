@@ -40,7 +40,7 @@ Generated dependencies, test captures, binaries and package staging are excluded
 | `src-tauri/icons/` | Master SVG and generated PNG, ICO and ICNS assets used by Tauri and MSIX. |
 | `src-tauri/packaging/AppxManifest.xml` | MSIX identity template, supported Windows family, visual assets and opt-in startup task. |
 | `src-tauri/packaging/build-msix.ps1` | Validates the x64 binary and stages the EXE, manifest, logos and license for MakeAppx. |
-| `docs/DESIGN.md`, `docs/PLANO.md` | Visual specification, project history, measurements and future work. |
+| `docs/DESIGN.md`, `docs/ROADMAP.md` | Visual specification, project history, measurements and future work. |
 | `docs/RELEASING.md` | GitHub rules, release and public visibility procedure. |
 | `docs/img/pixelpulse-banner.svg` | README artwork based on the original PixelPulse mark. |
 

@@ -1,6 +1,6 @@
 # PixelPulse contributor instructions
 
-Read [AGENTS.md](../AGENTS.md) and the [roadmap](../docs/PLANO.md) before editing. Keep changes focused and preserve the Windows 11 release behavior.
+Read [AGENTS.md](../AGENTS.md) and the [roadmap](../docs/ROADMAP.md) before editing. Keep changes focused and preserve the Windows 11 release behavior.
 
 - Use stable Rust, Tauri 2 and plain TypeScript, HTML and CSS. Reuse the existing collectors and shared settings state.
 - Keep the sample loop blocking between updates. Only refresh necessary sensors and update visible UI when its rendered values change.
