@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/styles/tokens.css">
+    <link rel="stylesheet" href="/styles/settings.css">
+    <title>PixelPulse</title>
+    <script type="module" src="/settings.ts"></script>
+  </head>
+  <body>
+    <main class="settings">
+      <header class="top"><span class="wordmark">PIXELPULSE</span><button id="close" type="button" aria-label="Close">×</button></header>
+      <div class="layout">
+        <nav aria-label="System Diagnostics">
+          <button type="button" data-section="diagnostics">
+            <svg viewBox="0 0 6 6" aria-hidden="true" focusable="false"><path d="M0 0h6v5H0zm1 1v3h4V1z" fill-rule="evenodd"/><path d="M1 3h1V2h1v1h1V2h1v1H4v1H3V3H2v1H1zM2 5h2v1H2z"/></svg>
+            <span data-section-label></span>
+          </button>
+          <button type="button" data-section="devices">
+            <svg viewBox="0 0 6 6" aria-hidden="true" focusable="false"><path d="M1 1h4v4H1zm1 1v2h2V2z" fill-rule="evenodd"/><path d="M2 0h2v1H2zm0 5h2v1H2zM0 2h1v2H0zm5 0h1v2H5z"/></svg>
+            <span data-section-label></span>
+          </button>
+          <button type="button" data-section="startup">
+            <svg viewBox="0 0 6 6" aria-hidden="true" focusable="false"><path d="M2 0h2v1H2zM1 1h1v2H1V2H0v3h1v1h4V5h1V2H5V1H4v2h1v2H1V3h1zm1 1h2v2H2z"/></svg>
+            <span data-section-label></span>
+          </button>
+          <button type="button" data-section="language">
+            <svg viewBox="0 0 6 6" aria-hidden="true" focusable="false"><path d="M1 0h4v1h1v4H5v1H1V5H0V1h1zm1 1v1h2V1zm-1 1v2h1V2zm3 0v2h1V2zM2 4v1h2V4zm0-2v2h2V2z" fill-rule="evenodd"/><path d="M0 3h6v1H0z"/></svg>
+            <span data-section-label></span>
+          </button>
+        </nav>
+        <section class="content" aria-labelledby="section-title">
+          <h1 id="section-title"></h1>
+          <p id="feedback" role="status" hidden></p>
+          <div id="panel"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

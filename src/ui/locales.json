@@ -1,0 +1,50 @@
+{
+  "en-US": {
+    "title": "System Diagnostics", "exit": "Exit PixelPulse", "diagnostics": "Diagnostics", "devices": "Devices",
+    "startup": "Startup", "language": "Language", "close": "Close", "windows": "Windows", "architecture": "Architecture",
+    "release": "Version", "build": "Build", "cores": "Cores", "threads": "Logical processors", "graphics": "Graphics",
+    "storage": "Storage volumes", "selected": "Shown in island", "system": "Windows volume", "primary": "Primary",
+    "linked": "Linked GPU", "dedicated": "Dedicated", "integrated": "Integrated", "unknown": "Unknown", "na": "N/A", "disk": "Disk",
+    "ready": "Metrics active.", "loading": "Detecting hardware…", "pinned": "Pinned", "unpinned": "Unpinned",
+    "hint": "Click to pin. Press ESC to unpin.", "hintClick": "Click to open and pin. Press ESC to unpin.",
+    "island": "PixelPulse. Click to pin or unpin.", "highest": "Highest primary metric",
+    "startupToggle": "Start PixelPulse when I sign in to Windows",
+    "startupNote": "Manage this preference for your Windows account.",
+    "devicesNote": "Select extra local volumes to display below the primary metrics.",
+    "limit": "No more rows fit on this display.", "error": "The change could not be applied.",
+    "startupError": "Startup could not be changed. Check Settings > Apps > Startup.",
+    "emptyGpu": "No supported physical GPU was found.", "emptyDisk": "No accessible local volume was found."
+  },
+  "pt-BR": {
+    "title": "Diagnóstico do sistema", "exit": "Encerrar PixelPulse", "diagnostics": "Diagnóstico", "devices": "Dispositivos",
+    "startup": "Inicialização", "language": "Idioma", "close": "Fechar", "windows": "Windows", "architecture": "Arquitetura",
+    "release": "Versão", "build": "Compilação", "cores": "Núcleos", "threads": "Processadores lógicos", "graphics": "Vídeo",
+    "storage": "Volumes de armazenamento", "selected": "Exibido na ilha", "system": "Volume do Windows", "primary": "Principal",
+    "linked": "GPU vinculada", "dedicated": "Dedicada", "integrated": "Integrada", "unknown": "Desconhecido", "na": "N/D", "disk": "Disco",
+    "ready": "Métricas ativas.", "loading": "Detectando hardware…", "pinned": "Fixada", "unpinned": "Livre",
+    "hint": "Clique para fixar. Pressione ESC para liberar.", "hintClick": "Clique para abrir e fixar. Pressione ESC para liberar.",
+    "island": "PixelPulse. Clique para fixar ou liberar.", "highest": "Maior métrica principal",
+    "startupToggle": "Iniciar o PixelPulse ao entrar no Windows",
+    "startupNote": "Gerencie esta preferência para sua conta do Windows.",
+    "devicesNote": "Selecione volumes locais extras para exibi-los abaixo das métricas principais.",
+    "limit": "A tela não comporta mais linhas.", "error": "Não foi possível aplicar a alteração.",
+    "startupError": "Confira Configurações > Aplicativos > Inicialização para alterar esta opção.",
+    "emptyGpu": "Nenhuma GPU física compatível foi encontrada.", "emptyDisk": "Nenhum volume local acessível foi encontrado."
+  },
+  "es": {
+    "title": "Diagnóstico del sistema", "exit": "Salir de PixelPulse", "diagnostics": "Diagnóstico", "devices": "Dispositivos",
+    "startup": "Inicio", "language": "Idioma", "close": "Cerrar", "windows": "Windows", "architecture": "Arquitectura",
+    "release": "Versión", "build": "Compilación", "cores": "Núcleos", "threads": "Procesadores lógicos", "graphics": "Gráficos",
+    "storage": "Volúmenes de almacenamiento", "selected": "Visible en la isla", "system": "Volumen de Windows", "primary": "Principal",
+    "dedicated": "Dedicada", "integrated": "Integrada", "linked": "GPU vinculada", "unknown": "Desconocido", "na": "N/D", "disk": "Disco",
+    "ready": "Métricas activas.", "loading": "Detectando hardware…", "pinned": "Fijada", "unpinned": "Sin fijar",
+    "hint": "Haz clic para fijar. Pulsa ESC para soltar.", "hintClick": "Haz clic para abrir y fijar. Pulsa ESC para soltar.",
+    "island": "PixelPulse. Haz clic para fijar o soltar.", "highest": "Mayor métrica principal",
+    "startupToggle": "Iniciar PixelPulse al iniciar sesión en Windows",
+    "startupNote": "Administra esta preferencia para tu cuenta de Windows.",
+    "devicesNote": "Selecciona volúmenes locales adicionales para mostrarlos bajo las métricas principales.",
+    "limit": "No caben más filas en esta pantalla.", "error": "No se pudo aplicar el cambio.",
+    "startupError": "Revisa Configuración > Aplicaciones > Inicio para cambiar esta opción.",
+    "emptyGpu": "No se encontró una GPU física compatible.", "emptyDisk": "No se encontró un volumen local accesible."
+  }
+}
