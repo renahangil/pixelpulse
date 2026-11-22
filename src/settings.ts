@@ -78,7 +78,7 @@ function render(): void {
   if (section === "version" && config) {
     const list = node("dl");
     const rows = [
-      [t("installed"), config.distribution === "standalone" ? config.version : config.version + ".0"],
+      [t("installed"), config.version],
       [t("releaseDate"), config.release_date || t("unreleased")],
       [t("distribution"), t(config.distribution)],
       [t("architecture"), config.inventory?.architecture || t("na")],

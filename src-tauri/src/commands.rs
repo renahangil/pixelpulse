@@ -35,17 +35,27 @@ pub fn get_glass_mode(state: State<'_, window::GlassMode>) -> window::GlassMode 
     *state.inner()
 }
 
-fn distribution() -> &'static str {
+fn installed_version() -> (String, &'static str) {
     #[cfg(windows)]
     if let Ok(package) = windows::ApplicationModel::Package::Current() {
         use windows::ApplicationModel::PackageSignatureKind;
-        return if package.SignatureKind().ok() == Some(PackageSignatureKind::Store) {
+        let distribution = if package.SignatureKind().ok() == Some(PackageSignatureKind::Store) {
             "store"
         } else {
             "msix"
         };
+        if let Ok(version) = package.Id().and_then(|id| id.Version()) {
+            return (
+                format!(
+                    "{}.{}.{}.{}",
+                    version.Major, version.Minor, version.Build, version.Revision
+                ),
+                distribution,
+            );
+        }
+        return (env!("CARGO_PKG_VERSION").to_owned(), distribution);
     }
-    "standalone"
+    (env!("CARGO_PKG_VERSION").to_owned(), "standalone")
 }
 
 /// Document visibility complements the native window's visibility and minimized state.
@@ -90,7 +100,7 @@ pub struct Configuration {
     preferences: Preferences,
     inventory: Option<Inventory>,
     volume_limit: usize,
-    version: &'static str,
+    version: String,
     build_id: Option<&'static str>,
     release_date: Option<&'static str>,
     distribution: &'static str,
@@ -111,14 +121,15 @@ pub fn get_settings(
         .get_webview_window("main")
         .map(|window| window::extra_limit(&window))
         .unwrap_or_default();
+    let (version, distribution) = installed_version();
     Ok(Configuration {
         preferences,
         inventory,
         volume_limit,
-        version: env!("CARGO_PKG_VERSION"),
+        version,
         build_id: option_env!("PIXELPULSE_REVISION"),
         release_date: option_env!("PIXELPULSE_RELEASE_DATE"),
-        distribution: distribution(),
+        distribution,
     })
 }
 

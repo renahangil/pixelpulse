@@ -49,6 +49,10 @@ jobs:
         shell: pwsh
         run: |
           ./src-tauri/packaging/build-msix.ps1 -IdentityName PixelPulse.LocalTest -Publisher 'CN=PixelPulse Local Test' -PublisherDisplayName 'PixelPulse Local Test'
+      - name: Build diagnostic collector
+        if: github.event_name == 'pull_request'
+        working-directory: src-tauri
+        run: cargo build --release --locked --example coletor_cli
       - name: Archive candidate binaries
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -57,6 +61,7 @@ jobs:
           path: |
             src-tauri/target/msix/*.msix
             src-tauri/target/release/pixelpulse.exe
+            src-tauri/target/release/examples/coletor_cli.exe
           if-no-files-found: error
           retention-days: 14
 
