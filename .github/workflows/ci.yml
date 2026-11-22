@@ -45,6 +45,20 @@ jobs:
         run: cargo test --locked
       - name: Build Windows release
         run: npm run tauri build -- --no-bundle
+      - name: Pack x64 MSIX for local validation
+        shell: pwsh
+        run: |
+          ./src-tauri/packaging/build-msix.ps1 -IdentityName PixelPulse.LocalTest -Publisher 'CN=PixelPulse Local Test' -PublisherDisplayName 'PixelPulse Local Test'
+      - name: Archive candidate binaries
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PixelPulse-Windows-x64-local-test
+          path: |
+            src-tauri/target/msix/*.msix
+            src-tauri/target/release/pixelpulse.exe
+          if-no-files-found: error
+          retention-days: 14
 
   tag-release:
     name: Create release tag
@@ -56,7 +70,7 @@ jobs:
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: '1.0.0.0'
+      RELEASE_TAG: '1.1.0.0'
     steps:
       - name: Tag the verified main commit
         shell: bash

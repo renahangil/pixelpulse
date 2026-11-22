@@ -39,4 +39,8 @@ export interface Configuration {
   preferences: Preferences;
   inventory: Inventory | null;
   volume_limit: number;
+  version: string;
+  build_id: string | null;
+  release_date: string | null;
+  distribution: "store" | "msix" | "standalone";
 }

@@ -77,3 +77,15 @@ Review this advisory before enabling Linux builds or release targets. Linux supp
 | 0.3 | 2026-11-15 | GPL-3.0 adopted. |
 | 0.2 | 2026-11-15 | Project name, pixel-art direction and GitHub workflow. |
 | 0.1 | 2026-11-15 | Initial project plan. |
+
+## 1.1.0 candidate validation
+
+Capture ten samples with the release collector CLI at idle and during video playback.
+Compare the standalone and MSIX island with Task Manager on the same adapter and account.
+The detailed JSON includes the numeric LUID, PDH return codes and instance counts.
+Distinguish a valid zero from unavailable data. Verify Intel UHD, AMD integrated,
+NVIDIA discrete and hybrid priority, including resume and restart. Check iGPU at
+100% in both layouts, three locales, and preferences after an MSIX update.
+Physical-device and release performance measurements are pending. Shared memory
+requires a validated adapter-wide measurement. Set PIXELPULSE_RELEASE_DATE
+(YYYY-MM-DD) when building a published release; candidates display pending release.

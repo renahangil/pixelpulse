@@ -35,6 +35,19 @@ pub fn get_glass_mode(state: State<'_, window::GlassMode>) -> window::GlassMode 
     *state.inner()
 }
 
+fn distribution() -> &'static str {
+    #[cfg(windows)]
+    if let Ok(package) = windows::ApplicationModel::Package::Current() {
+        use windows::ApplicationModel::PackageSignatureKind;
+        return if package.SignatureKind().ok() == Some(PackageSignatureKind::Store) {
+            "store"
+        } else {
+            "msix"
+        };
+    }
+    "standalone"
+}
+
 /// Document visibility complements the native window's visibility and minimized state.
 #[tauri::command]
 pub fn set_ui_visibility(
@@ -77,6 +90,10 @@ pub struct Configuration {
     preferences: Preferences,
     inventory: Option<Inventory>,
     volume_limit: usize,
+    version: &'static str,
+    build_id: Option<&'static str>,
+    release_date: Option<&'static str>,
+    distribution: &'static str,
 }
 
 #[tauri::command]
@@ -98,6 +115,10 @@ pub fn get_settings(
         preferences,
         inventory,
         volume_limit,
+        version: env!("CARGO_PKG_VERSION"),
+        build_id: option_env!("PIXELPULSE_REVISION"),
+        release_date: option_env!("PIXELPULSE_RELEASE_DATE"),
+        distribution: distribution(),
     })
 }
 
