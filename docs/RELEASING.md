@@ -14,7 +14,8 @@
 1. Open or update the release PR into `main`. Confirm the proposed diff and review the **Windows checks** job under **Checks**. CI runs formatting, Clippy, tests and the release build on Windows. It also runs on the subsequent push to `main`.
 2. In **Settings → Rules → Rulesets → pr-general-ruleset**, verify enforcement is **Active**, the target includes `main`, and pull requests are required. Enable **Require status checks to pass**, selecting the exact check displayed by GitHub after its first successful run. Block force pushes and deletion for `main`. Review bypass actors and keep them limited. Enable up-to-date branches if you want the check to run against the latest base.
 3. When a second maintainer can review, require one independent approval and merge after approval and green checks. If you maintain the repository alone, use zero required approvals until a reviewer is available. Authors cannot approve their own PRs. Ruleset availability for private personal repositories depends on the account plan.
-4. Merge the approved PR. A normal merge commit preserves the sequence of phase commits on `main`. In **Actions → CI**, open the run for the resulting `main` commit and confirm **Windows checks** passes.
+4. Confirm that CodeQL has reported results for the PR. The main branch ruleset requires them. If default setup was just enabled, wait for its baseline run, then push a commit to the PR branch to trigger its analysis.
+5. Merge the approved PR. A normal merge commit preserves the sequence of phase commits on `main`. In **Actions → CI**, open the run for the resulting `main` commit and confirm **Windows checks** passes.
 
 If you need command-line access, authenticate through the browser and complete SSO if GitHub requests it:
 
