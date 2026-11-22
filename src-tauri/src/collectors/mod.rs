@@ -35,6 +35,10 @@ pub struct DiskInfo {
 /// Older GPUs may expose only some of these sensors.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GpuInfo {
+    pub integrated: Option<bool>,
+    #[cfg(windows)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pdh: Option<gpu::CounterDiagnostics>,
     pub usage_percent: Option<u32>,
     pub vram_used_mb: Option<f64>,
     pub vram_total_mb: Option<f64>,

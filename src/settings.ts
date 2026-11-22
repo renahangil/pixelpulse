@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { t, useLanguage, type Language, type TextKey } from "./ui/i18n";
 import type { Configuration, Gpu, Preferences } from "./ui/configuration";
 
-type Section = "diagnostics" | "devices" | "startup" | "language";
+type Section = "diagnostics" | "devices" | "startup" | "language" | "version";
 const panel = document.querySelector<HTMLElement>("#panel")!;
 const feedback = document.querySelector<HTMLElement>("#feedback")!;
 const navigation = document.querySelectorAll<HTMLButtonElement>("nav button");
@@ -74,6 +74,28 @@ function render(): void {
   }
   document.querySelector("#section-title")!.textContent = t(section);
   panel.replaceChildren();
+
+  if (section === "version" && config) {
+    const list = node("dl");
+    const rows = [
+      [t("installed"), config.version],
+      [t("releaseDate"), config.release_date || t("unreleased")],
+      [t("distribution"), t(config.distribution)],
+      [t("architecture"), config.inventory?.architecture || t("na")],
+      [t("build"), config.build_id || t("na")],
+    ];
+    for (const [label, value] of rows) fact(list, label, value);
+    const copy = node("button", t("copyVersion"));
+    copy.type = "button";
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(rows.map(([label, value]) => label + ": " + value).join("\n"));
+        copy.textContent = t("copied");
+      } catch { showError("error"); }
+    });
+    panel.append(list, node("h2", t("releaseNotes")), note("notes110"), copy);
+    return;
+  }
 
   if (section === "language") {
     const select = node("select");

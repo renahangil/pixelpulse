@@ -11,6 +11,7 @@ export interface Snapshot {
   system_volume: string | null;
   volumes: { id: string; letter: string; usage: DiskUsage | null }[];
   gpu: {
+    integrated: boolean | null;
     usage_percent: number | null;
     vram_used_mb: number | null;
     vram_total_mb: number | null;
@@ -77,6 +78,7 @@ for (const name of METRICS) {
 }
 const dots = document.querySelectorAll<HTMLSpanElement>(".dots .dot");
 const highest = document.getElementById("highest");
+const gpuLabel = document.getElementById("gpu-label");
 const systemLabel = document.getElementById("ssd-label");
 const extra = document.getElementById("extra-metrics");
 const extraBars = new Map<string, { row: HTMLElement; bar: SegmentedBar }>();
@@ -122,6 +124,8 @@ export function renderMetrics(snapshot: Snapshot, expanded: boolean): void {
     percent(snapshot.cpu_percent), percent(snapshot.ram_percent),
     percent(snapshot.gpu?.usage_percent), percent(snapshot.disk?.used_percent),
   ];
+  const gpuName = snapshot.gpu?.integrated === true ? "iGPU" : "GPU";
+  setText(gpuLabel, gpuName);
   const diskLabel = snapshot.system_volume || t("disk");
   setText(systemLabel, diskLabel);
   if (expanded) {
@@ -141,6 +145,6 @@ export function renderMetrics(snapshot: Snapshot, expanded: boolean): void {
       }
     });
     dots.forEach((dot, index) => dot.classList.toggle("is-highest", index === winner));
-    setText(highest, winner < 0 ? "—" : `${winner === 3 ? diskLabel : METRICS[winner].toUpperCase()} ${Math.round(maximum)}%`);
+    setText(highest, winner < 0 ? "—" : `${winner === 3 ? diskLabel : winner === 2 ? gpuName : METRICS[winner].toUpperCase()} ${Math.round(maximum)}%`);
   }
 }

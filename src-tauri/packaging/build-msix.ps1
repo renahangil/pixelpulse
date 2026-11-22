@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9.-]{3,50}$')][string]$IdentityName,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Publisher,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
-    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+\.0$')][string]$Version = '1.0.0.0',
+    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+\.0$')][string]$Version = '1.1.0.0',
     [string]$MakeAppxPath
 )
 

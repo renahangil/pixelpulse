@@ -1,6 +1,6 @@
 # PixelPulse roadmap
 
-Plan revision 0.13 · First production release 1.0.0.0
+Plan revision 0.14 · Maintenance release 1.1.0.0
 
 ## Release decisions
 
@@ -24,7 +24,7 @@ Plan revision 0.13 · First production release 1.0.0.0
 | 7 | Added local inventory, discrete GPU discovery, extra volumes, locale selection and startup options. Validated diagnostics and preference changes on the GT 1030 test PC. Store certification, signed-package update/sign-in and broader GPU coverage remain open. |
 | 8 | Prepared the 1.0.0 release branch and CI, moved island help text down 6 px, enlarged settings typography, and updated the public documentation. Repository visibility, merge, final release tag and Store submission are owner-operated steps. |
 
-The English Microsoft Store submission procedure is retained on the phase 7 branch. Git history preserves earlier acceptance reports and release measurements.
+The English Microsoft Store submission procedure is retained in the [phase 7 documentation commit](https://github.com/renahangil/pixelpulse/blob/efafcf3717ebe576e87bbec87a8540cc1fc684fd/docs/MICROSOFT-STORE.md). Git history preserves earlier acceptance reports and release measurements.
 
 ## Release candidate validation
 
@@ -64,6 +64,7 @@ Review this advisory before enabling Linux builds or release targets. Linux supp
 
 | Plan revision | Date | Record |
 | --- | --- | --- |
+| 0.14 | 2026-11-22 | Improved integrated GPU activity collection, added the iGPU label and Version settings, and recorded Intel UHD validation. Adapter-wide memory readings remain future work. |
 | 0.13 | 2026-11-21 | Prepared the 1.0.0.0 tag from verified main commits, the Microsoft Store listing link, the dependency review, and the GitHub release checklist. Store submission remains a separate step. |
 | 0.12 | 2026-11-20 | Release candidate 1.0.0, Windows CI, documentation in English, release checklist and final settings typography. |
 | 0.11 | 2026-11-20 | Diagnostics, startup, volumes, GPU fallback, locales and MSIX preparation. |
@@ -77,3 +78,22 @@ Review this advisory before enabling Linux builds or release targets. Linux supp
 | 0.3 | 2026-11-15 | GPL-3.0 adopted. |
 | 0.2 | 2026-11-15 | Project name, pixel-art direction and GitHub workflow. |
 | 0.1 | 2026-11-15 | Initial project plan. |
+
+## 1.1.0 validation and follow-up
+
+On an Intel UHD laptop, the diagnostic CLI from 9f64ffe returned 29 valid activity
+samples after the initial sample, ranging from 5% to 53%. The owner confirmed
+that the expanded island rose during video playback and dropped after closing
+the browser tab. The Intel test confirms activity collection with this build.
+The exact failure mechanism in 1.0.0 remains unconfirmed.
+
+An earlier diagnostic session saw a Windows counter registration error while only
+the Microsoft Basic Render Driver was available. That error did not recur on Intel UHD.
+AMD integrated, NVIDIA discrete and hybrid hardware validation, a signed MSIX
+update with preference persistence, and release performance measurements remain
+pending. Check resume and restart as part of that validation.
+
+Plan adapter-wide dedicated and shared graphics memory readings in Diagnostics for
+1.2.0, subject to validation on Intel UHD and NVIDIA GT 1030. Version 1.1.0 measures
+GPU activity. Set PIXELPULSE_RELEASE_DATE to the chosen release date (YYYY-MM-DD)
+before building distribution binaries to display the date on the Version screen.

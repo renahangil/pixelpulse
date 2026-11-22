@@ -42,7 +42,9 @@ pub(super) struct GpuCollector {
     #[cfg(windows)]
     pdh: Option<GpuCounter>,
     #[cfg(windows)]
-    pdh_attempted: bool,
+    retry_at: Option<std::time::Instant>,
+    #[cfg(windows)]
+    diagnostics: CounterDiagnostics,
 }
 
 impl GpuCollector {
@@ -141,7 +143,9 @@ impl GpuCollector {
             #[cfg(windows)]
             pdh: None,
             #[cfg(windows)]
-            pdh_attempted: false,
+            retry_at: None,
+            #[cfg(windows)]
+            diagnostics: CounterDiagnostics::default(),
         }
     }
 
@@ -154,7 +158,10 @@ impl GpuCollector {
 
     pub(super) fn collect(&mut self, details: bool) -> Option<GpuInfo> {
         let adapter = self.adapters.first()?;
-        let mut info = GpuInfo::default();
+        let mut info = GpuInfo {
+            integrated: adapter.info.integrated,
+            ..Default::default()
+        };
         if let Some(device) = adapter
             .nvml_index
             .and_then(|index| self.nvml.as_ref()?.device_by_index(index).ok())
@@ -171,11 +178,31 @@ impl GpuCollector {
         if info.usage_percent.is_none()
             && let Some(luid) = adapter.luid
         {
-            if !self.pdh_attempted {
-                self.pdh_attempted = true;
-                self.pdh = GpuCounter::new(luid);
+            let now = std::time::Instant::now();
+            if let Some(counter) = &mut self.pdh {
+                info.usage_percent = counter.sample(&mut self.diagnostics);
+                if info.usage_percent.is_some() {
+                    self.retry_at = None;
+                } else {
+                    // Give new process instances time to accumulate a second sample.
+                    let deadline = self.retry_at.get_or_insert(now + RETRY);
+                    if now >= *deadline {
+                        self.pdh = None;
+                        self.retry_at = None;
+                    }
+                }
+            } else if self.retry_at.is_none_or(|deadline| now >= deadline) {
+                self.diagnostics = CounterDiagnostics {
+                    luid_high: luid.HighPart as u32,
+                    luid_low: luid.LowPart,
+                    ..Default::default()
+                };
+                self.pdh = GpuCounter::new(luid, &mut self.diagnostics);
+                self.retry_at = Some(now + RETRY);
             }
-            info.usage_percent = self.pdh.as_mut().and_then(GpuCounter::sample);
+            if details {
+                info.pdh = Some(self.diagnostics.clone());
+            }
         }
         Some(info)
     }
@@ -276,31 +303,79 @@ fn property<T: Default>(adapter: &IDXCoreAdapter, property: Property) -> Option<
 }
 
 #[cfg(windows)]
+const RETRY: std::time::Duration = std::time::Duration::from_secs(30);
+
+#[cfg(windows)]
+#[derive(Clone, Default, Debug, Serialize)]
+pub struct CounterDiagnostics {
+    luid_high: u32,
+    luid_low: u32,
+    open: Option<u32>,
+    add: Option<u32>,
+    collect: Option<u32>,
+    size: Option<u32>,
+    format: Option<u32>,
+    total: u32,
+    valid: u32,
+    matching: u32,
+}
+
+#[cfg(windows)]
+fn matching_engine(name: &str, high: u32, low: u32) -> Option<&str> {
+    // PDH instance names contain two hexadecimal DWORDs, independent of locale.
+    let mut fields = name.split('_');
+    fields.find(|field| field.eq_ignore_ascii_case("luid"))?;
+    let hex = |field: &str| {
+        u32::from_str_radix(
+            field
+                .strip_prefix("0x")
+                .or_else(|| field.strip_prefix("0X"))?,
+            16,
+        )
+        .ok()
+    };
+    if hex(fields.next()?)? != high || hex(fields.next()?)? != low {
+        return None;
+    }
+    let physical = fields.next()?;
+    if !physical.eq_ignore_ascii_case("phys") {
+        return None;
+    }
+    // Slice at the physical-engine suffix, dropping the per-process prefix.
+    Some(&name[(physical.as_ptr() as usize - name.as_ptr() as usize)..])
+}
+
+#[cfg(windows)]
 struct GpuCounter {
     query: PDH_HQUERY,
     counter: PDH_HCOUNTER,
-    luid: String,
+    luid: LUID,
     buffer: Vec<usize>,
 }
 
 #[cfg(windows)]
 impl GpuCounter {
-    fn new(luid: LUID) -> Option<Self> {
+    fn new(luid: LUID, diag: &mut CounterDiagnostics) -> Option<Self> {
         let mut query = PDH_HQUERY::default();
         let mut counter = PDH_HCOUNTER::default();
         // SAFETY: Only the sampler thread uses these handles. Drop closes the query.
         unsafe {
-            if PdhOpenQueryW(PCWSTR::null(), 0, &mut query) != 0 {
+            let status = PdhOpenQueryW(PCWSTR::null(), 0, &mut query);
+            diag.open = Some(status);
+            if status != 0 {
                 return None;
             }
-            if PdhAddEnglishCounterW(
+            let status = PdhAddEnglishCounterW(
                 query,
                 w!(r"\GPU Engine(*)\Utilization Percentage"),
                 0,
                 &mut counter,
-            ) != 0
-                || PdhCollectQueryData(query) != 0
-            {
+            );
+            diag.add = Some(status);
+            if status == 0 {
+                diag.collect = Some(PdhCollectQueryData(query));
+            }
+            if diag.collect != Some(0) {
                 PdhCloseQuery(query);
                 return None;
             }
@@ -308,33 +383,35 @@ impl GpuCounter {
         Some(Self {
             query,
             counter,
-            luid: format!(
-                "_luid_0x{:08x}_0x{:08x}_",
-                luid.HighPart as u32, luid.LowPart
-            ),
+            luid,
             buffer: Vec::new(),
         })
     }
 
-    fn sample(&mut self) -> Option<u32> {
+    fn sample(&mut self, diag: &mut CounterDiagnostics) -> Option<u32> {
         // SAFETY: PDH reports the size. Vec<usize> aligns the items, and their names point into
         // the same buffer, which stays alive while the instances are read.
         unsafe {
-            if PdhCollectQueryData(self.query) != 0 {
+            diag.size = None;
+            diag.format = None;
+            diag.total = 0;
+            diag.valid = 0;
+            diag.matching = 0;
+            diag.collect = Some(PdhCollectQueryData(self.query));
+            if diag.collect != Some(0) {
                 return None;
             }
             let mut bytes = 0;
             let mut count = 0;
-            if PdhGetFormattedCounterArrayW(
+            let status = PdhGetFormattedCounterArrayW(
                 self.counter,
                 PDH_FMT_DOUBLE,
                 &mut bytes,
                 &mut count,
                 None,
-            ) != PDH_MORE_DATA
-                || bytes == 0
-                || bytes > 4_000_000
-            {
+            );
+            diag.size = Some(status);
+            if status != PDH_MORE_DATA || bytes == 0 || bytes > 4_000_000 {
                 return None;
             }
             self.buffer
@@ -343,19 +420,22 @@ impl GpuCounter {
                 .buffer
                 .as_mut_ptr()
                 .cast::<PDH_FMT_COUNTERVALUE_ITEM_W>();
-            if PdhGetFormattedCounterArrayW(
+            let status = PdhGetFormattedCounterArrayW(
                 self.counter,
                 PDH_FMT_DOUBLE,
                 &mut bytes,
                 &mut count,
                 Some(items),
-            ) != 0
+            );
+            diag.format = Some(status);
+            if status != 0
                 || count as usize
                     > self.buffer.len() * size_of::<usize>()
                         / size_of::<PDH_FMT_COUNTERVALUE_ITEM_W>()
             {
                 return None;
             }
+            diag.total = count;
             let mut engines = std::collections::HashMap::<String, f64>::new();
             for entry in std::slice::from_raw_parts(items, count as usize) {
                 if !matches!(entry.FmtValue.CStatus, 0 | 1) || entry.szName.is_null() {
@@ -364,11 +444,15 @@ impl GpuCounter {
                 let Ok(name) = entry.szName.to_string() else {
                     continue;
                 };
-                let Some((_, engine)) = name.split_once(&self.luid) else {
+                diag.valid += 1;
+                let Some(engine) =
+                    matching_engine(&name, self.luid.HighPart as u32, self.luid.LowPart)
+                else {
                     continue;
                 };
                 let value = entry.FmtValue.Anonymous.doubleValue;
                 if value.is_finite() {
+                    diag.matching += 1;
                     *engines.entry(engine.to_owned()).or_default() += value.max(0.0);
                 }
             }
@@ -394,6 +478,19 @@ impl Drop for GpuCounter {
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[test]
+    fn resolves_only_the_selected_adapter() {
+        let name = "pid_42_LUID_0X0_0x00AB_phys_0_eng_2_engtype_VideoDecode";
+        assert_eq!(
+            matching_engine(name, 0, 171),
+            Some("phys_0_eng_2_engtype_VideoDecode")
+        );
+        assert_eq!(matching_engine(name, 1, 171), None);
+        assert_eq!(matching_engine(name, 0, 17), None);
+        assert_eq!(matching_engine("pid_42_luid_0x0_bad", 0, 0), None);
+    }
+
     #[test]
     fn gpu_ausente_nao_causa_falha() {
         let mut gpu = GpuCollector {
@@ -402,7 +499,9 @@ mod tests {
             #[cfg(windows)]
             pdh: None,
             #[cfg(windows)]
-            pdh_attempted: false,
+            retry_at: None,
+            #[cfg(windows)]
+            diagnostics: CounterDiagnostics::default(),
         };
         assert!(gpu.collect(true).is_none());
         assert!(gpu.collect(false).is_none());
